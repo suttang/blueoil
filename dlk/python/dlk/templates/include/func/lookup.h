@@ -24,4 +24,13 @@ void func_Lookup(const TensorView<float, MemoryLayout::NHWC>& input,
     const TensorView<QUANTIZED_PACKED_KERNEL, MemoryLayout::TC>& msb,
     const TensorView<QUANTIZED_PACKED, MemoryLayout::ChHWBCl>& output);
 
+void func_LookupV2(const TensorView<float, MemoryLayout::NHWC>& input,
+    const TensorView<QUANTIZED_PACKED_KERNEL, MemoryLayout::TC>& rlsb,
+    const TensorView<QUANTIZED_PACKED_KERNEL, MemoryLayout::TC>& rmsb,
+    const TensorView<QUANTIZED_PACKED_KERNEL, MemoryLayout::TC>& glsb,
+    const TensorView<QUANTIZED_PACKED_KERNEL, MemoryLayout::TC>& gmsb,
+    const TensorView<QUANTIZED_PACKED_KERNEL, MemoryLayout::TC>& blsb,
+    const TensorView<QUANTIZED_PACKED_KERNEL, MemoryLayout::TC>& bmsb,
+    const TensorView<QUANTIZED_PACKED, MemoryLayout::HWChBCl>& output);
+
 #endif // DLK_FUNC_LOOKUP_H_INCLUDED

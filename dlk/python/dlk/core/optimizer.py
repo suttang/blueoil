@@ -24,7 +24,7 @@ import numpy as np
 from core.data_types import QUANTIZED_NOT_PACKED, QUANTIZED_PACKED, QUANTIZED_PACKED_KERNEL, Int32, PackedUint32, Uint32
 from core.graph import Graph
 from core.graph_pattern_matching import get_nodes_in_branch, sort_graph
-from core.operators import Constant, Conv, Lookup, Operator
+from core.operators import Constant, Conv, Lookup, LookupV2, Operator
 from modules.packer import Packer
 
 
@@ -571,6 +571,82 @@ def pass_propagate_output_type_backward(graph: Graph) -> None:
     output_node = exec_list[-1]
     output_type = output_node.dtype
     output_dtype_changer(output_node, output_type)
+
+
+def pass_lookup_v2(graph: Graph) -> None:
+    exec_list = [n for n in sort_graph(graph) if n.op_type == 'Conv']
+    placeholder = [n for n in sort_graph(graph) if n.op_type in 'Input']
+
+    output_op = []
+    to_be_removed = []
+    embedded_lsb = []
+    embedded_msb = []
+
+    for m in exec_list:
+        split_op = m.input_ops['X']
+        if split_op.op_type != 'Split':
+            continue
+
+        bn = m.output_ops['Y'][0]
+        aq = bn.output_ops['Y'][0]
+        output_op.append(aq.output_op_list[0])
+
+        def forward_calc(n):
+            data = m.input_ops['W'].data.flatten() * n
+            dict_data = {'data': data}
+            bn_data = bn.run(**dict_data)
+            q_data = aq.run(**bn_data)
+            return [q_data['data']]
+
+        embedded_table = np.concatenate([forward_calc(pv) for pv in range(256)])
+
+        lsb = np.zeros((256,), np.uint32)
+        msb = np.zeros((256,), np.uint32)
+
+        word_size = 32
+        lu_bitwidth = 2
+        packer = Packer(lu_bitwidth, word_size)
+
+        idx = 0
+        for p in embedded_table:
+            data = packer.run(p.astype(np.float32), p.shape).flatten()
+            lsb[idx] = data[0]
+            msb[idx] = data[1]
+            idx += 1
+
+        embedded_lsb.append(Constant(m.name + '_pe_lsb_new', QUANTIZED_PACKED_KERNEL(), lsb,
+                                     dimension_format='TC', packed=True, actual_shape=[256, word_size]))
+        embedded_msb.append(Constant(m.name + '_pe_msb_new', QUANTIZED_PACKED_KERNEL(), msb,
+                                     dimension_format='TC', packed=True, actual_shape=[256, word_size]))
+
+    n, h, w, c = output_op[0].shape
+    shape = [h, w, 1, 2, 32]
+
+    pe = LookupV2('LookupV2', shape, QUANTIZED_PACKED(),
+                  {'input': placeholder[0],
+                   'r_lsb': embedded_lsb[0],
+                   'r_msb': embedded_msb[0],
+                   'g_lsb': embedded_lsb[1],
+                   'g_msb': embedded_msb[1],
+                   'b_lsb': embedded_lsb[2],
+                   'b_msb': embedded_msb[2]},
+                  dimension_format='HWChBCl')
+
+    get_nodes_in_branch(output_op[0], placeholder[0], to_be_removed)
+    placeholder[0].remove_output('output')
+    placeholder[0].add_output('output', pe)
+    pe.add_outputs(output_op[0].output_ops)
+
+    concat_output = output_op[0].output_op_list[0]
+
+    concat_output.add_input('X', pe)
+    for pe_lsb, pe_msb in zip(embedded_lsb, embedded_msb):
+        graph.add_op(pe_lsb)
+        graph.add_op(pe_msb)
+    graph.add_op(pe)
+
+    for op in to_be_removed:
+        graph.remove_op(op)
 
 
 def pass_lookup(graph: Graph) -> None:
