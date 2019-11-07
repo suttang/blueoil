@@ -30,6 +30,7 @@ _TASK_TYPE_TEMPLATE_FILE = {
     "classification": "classification.tpl.py",
     "object_detection": "object_detection.tpl.py",
     "semantic_segmentation": "semantic_segmentation.tpl.py",
+    "super_resolution": "super_resolution.tpl.py",
 }
 
 _NETWORK_NAME_NETWORK_MODULE_CLASS = {
@@ -53,6 +54,10 @@ _NETWORK_NAME_NETWORK_MODULE_CLASS = {
         "network_module": "lm_segnet_v1",
         "network_class": "LmSegnetV1Quantize",
     },
+    "Dcscn": {
+        "network_module": "dcscn",
+        "network_class": "Dcscn",
+    }
 }
 
 _DATASET_FORMAT_DATASET_MODULE_CLASS = {
@@ -132,7 +137,6 @@ def _blueoil_to_lmnet(blueoil_config):
         "summarise_steps": 100,
     }
     dataset = {}
-
 
     model_name = blueoil_config["model_name"]
 
