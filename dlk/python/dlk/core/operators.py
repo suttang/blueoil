@@ -1335,7 +1335,7 @@ class BatchNormalization(Operator):
         beta = np.float64(self._input_ops['B'].data)
         mean = np.float64(self._input_ops['mean'].data)
         var = np.float64(self._input_ops['var'].data)
-
+        
         x_norm = (kwargs['data'] - mean) / np.sqrt(var + self.epsilon)
         kwargs['data'] = scale * x_norm + beta
         return kwargs

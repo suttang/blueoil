@@ -181,7 +181,7 @@ def pass_propagate_quantization_details_into_conv(graph: Graph) -> None:
         'QTZ_binary_mean_scaling',
         'QTZ_linear_mid_tread_half',
         'QTZ_binary_channel_wise_mean_scaling',
-        'Lookup'
+        'Lookup', 'LookupV2'
     ]
 
     quant_details = defaultdict(list)
@@ -591,15 +591,30 @@ def pass_lookup_v2(graph: Graph) -> None:
         aq = bn.output_ops['Y'][0]
         output_op.append(aq.output_op_list[0])
 
-        def forward_calc(n):
-            data = m.input_ops['W'].data.flatten() * n
-            dict_data = {'data': data}
-            bn_data = bn.run(**dict_data)
-            q_data = aq.run(**bn_data)
-            return [q_data['data']]
+        def forward_calc(pixel_value):
+            conv = m.input_ops['W'].data.flatten() * (pixel_value / 255.0)
+
+            # dict_data = {'data': data}
+            # bn_data = bn.run(**dict_data)
+            scale = np.float64(bn.input_ops['scale'].data)
+            beta = np.float64(bn.input_ops['B'].data)
+            mean = np.float64(bn.input_ops['mean'].data)
+            var = np.float64(bn.input_ops['var'].data)
+            x_norm = (conv - mean) / np.sqrt(var + bn.epsilon)
+            conv_bn = scale * x_norm + beta
+
+            bit = aq.input_ops['Y'].data
+            max_value = np.float64(aq.input_ops['Z'].data)
+            conv_bn = np.float64(conv_bn)
+            n1 = 2 ** bit - 1
+            np.clip(conv_bn, 0, max_value, out=conv_bn)
+            conv_bn_q = np.floor(conv_bn * n1 / max_value + 0.5).astype(np.int32)
+            # q_data = aq.run(**bn_data)
+            # print(q_data['data'])
+            return [conv_bn_q]
 
         embedded_table = np.concatenate([forward_calc(pv) for pv in range(256)])
-
+        
         lsb = np.zeros((256,), np.uint32)
         msb = np.zeros((256,), np.uint32)
 
