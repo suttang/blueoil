@@ -161,13 +161,6 @@ void func_LookupV2(const TensorView<float, MemoryLayout::NHWC>& input,
     out_ptr[i * 2 + 0] = QUANTIZED_PACKED((b_lsb.Raw() << 20) | (g_lsb.Raw() << 10) | r_lsb.Raw());
     out_ptr[i * 2 + 1] = QUANTIZED_PACKED((b_msb.Raw() << 20) | (g_msb.Raw() << 10) | r_msb.Raw());
 
-    if(i < 10){
-      std::cout << "===== RGB lsb msb =======" << std::endl;
-      std::cout << r << " " << r_lsb.Raw() << " " << r_msb.Raw() << std::endl;
-      std::cout << g << " " << g_lsb.Raw() << " " << g_msb.Raw() << std::endl;
-      std::cout << b << " " << b_lsb.Raw() << " " << b_msb.Raw() << std::endl;
-      std::cout << out_ptr[i * 2 + 0].Raw() << " " << out_ptr[i * 2 + 1].Raw() << std::endl;
-    }
   }
   Measurement::Stop();
 }
