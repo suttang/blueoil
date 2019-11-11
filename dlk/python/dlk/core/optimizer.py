@@ -632,9 +632,9 @@ def pass_lookup_v2(graph: Graph) -> None:
                 msb[idx] = data[1]
                 idx += 1
 
-            embedded_lsb.append(Constant(m.name + '_pe_lsb_new', QUANTIZED_PACKED_KERNEL(), lsb,
+            embedded_lsb.append(Constant(p2.name + '_pe_lsb_new', QUANTIZED_PACKED_KERNEL(), lsb,
                                          dimension_format='TC', packed=True, actual_shape=[256, word_size]))
-            embedded_msb.append(Constant(m.name + '_pe_msb_new', QUANTIZED_PACKED_KERNEL(), msb,
+            embedded_msb.append(Constant(p2.name + '_pe_msb_new', QUANTIZED_PACKED_KERNEL(), msb,
                                          dimension_format='TC', packed=True, actual_shape=[256, word_size]))
 
         if len(embedded_msb) == num_lookup_table and len(embedded_lsb) == num_lookup_table:
