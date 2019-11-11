@@ -147,9 +147,9 @@ void func_LookupV2(const TensorView<float, MemoryLayout::NHWC>& input,
   int len = h * w;
 #pragma omp parallel for
   for(int i = 0; i < len; i++) {
-    int r = int(in_ptr[i * 3 + 0]);
-    int g = int(in_ptr[i * 3 + 1]);
-    int b = int(in_ptr[i * 3 + 2]);
+    int r = int(in_ptr[i * 3 + 0] * 255.0f);
+    int g = int(in_ptr[i * 3 + 1] * 255.0f);
+    int b = int(in_ptr[i * 3 + 2] * 255.0f);
 
     auto r_lsb = r_lsb_ptr[r];
     auto g_lsb = g_lsb_ptr[g];
