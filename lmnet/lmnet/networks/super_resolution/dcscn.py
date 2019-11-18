@@ -27,6 +27,7 @@ class Dcscn(BaseNetwork):
         self,
         input_channel=1,
         output_channel=1,
+        weight_decay_rate=None,
         *args,
         **kwargs
     ):
@@ -34,6 +35,7 @@ class Dcscn(BaseNetwork):
 
         self.input_channel = input_channel
         self.output_channel = output_channel
+        self.weight_decay_rate = weight_decay_rate
 
         self.H = []
         self.Weights = []
@@ -298,7 +300,7 @@ class Dcscn(BaseNetwork):
         self.image_loss = tf.identity(self.mse, name="image_loss")
 
         l2_norm_losses = [tf.nn.l2_loss(w) for w in self.Weights]
-        l2_norm_loss = self.l2_decay + tf.add_n(l2_norm_losses)
+        l2_norm_loss = self.weight_decay_rate + tf.add_n(l2_norm_losses)
         self.loss = self.image_loss + l2_norm_loss
 
         tf.summary.scalar("loss", self.loss)

@@ -57,7 +57,11 @@ _NETWORK_NAME_NETWORK_MODULE_CLASS = {
     "Dcscn": {
         "network_module": "dcscn",
         "network_class": "Dcscn",
-    }
+    },
+    "DcscnQuantize": {
+        "network_module": "dcscn",
+        "network_class": "Dcscn",
+    },
 }
 
 _DATASET_FORMAT_DATASET_MODULE_CLASS = {
