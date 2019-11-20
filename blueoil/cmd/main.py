@@ -78,8 +78,9 @@ def train(config, experiment_id=None):
             checkpoint_name
         ))
     except Exception as err:
-        click.echo(err.args, err=True)
-        exit(1)
+        raise err
+        # click.echo(err.args, err=True)
+        # exit(1)
 
 
 @main.command(help='Convert trained model to binary files.')

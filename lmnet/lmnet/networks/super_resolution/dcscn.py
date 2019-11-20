@@ -35,7 +35,30 @@ class Dcscn(BaseNetwork):
 
         self.input_channel = input_channel
         self.output_channel = output_channel
+
+        # L2 decay
         self.weight_decay_rate = weight_decay_rate
+
+        # Scale factor for Super Resolution (should be 2 or more)
+        self.scale = 2
+
+        # Number of feature extraction layers
+        self.layers = 12
+
+        # Number of filters of first feature-extraction CNNs
+        self.filters = 196
+
+        # Number of filters of last feature-extraction CNNs
+        self.min_filters = 48
+
+        # Number of CNN filters are decayed from [filters] to [min_filters] by this gamma
+        self.filters_decay_gamma = 1.5
+
+        # Output nodes should be kept by this probability. If 1, don't use dropout.
+        self.dropout_rate = 0.8
+
+        # Use batch normalization after each CNNs
+        self.batch_norm = False
 
         self.H = []
         self.Weights = []
@@ -274,8 +297,8 @@ class Dcscn(BaseNetwork):
         return y_hat
 
     def inference(self, x_placeholder, is_training):
-        base = self.base(x_placeholder, self.x2, self.dropout)
-        self.output = tf.identity(base, name="output")
+        y_hat = self.forward(x_placeholder, self.x2, self.dropout)
+        self.output = tf.identity(y_hat, name="output")
 
         return self.output
 
@@ -286,15 +309,17 @@ class Dcscn(BaseNetwork):
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):
                 optimizer = tf.train.AdamOptimizer(
-                    learning_rate, beta1=beta1, beta2=beta2, epsilon=1e-8
+                    self.learning_rate, beta1=beta1, beta2=beta2, epsilon=1e-8
                 )
         else:
             optimizer = tf.train.AdamOptimizer(
-                learning_rate, beta1=beta1, beta2=beta2, epsilon=1e-8
+                self.learning_rate, beta1=beta1, beta2=beta2, epsilon=1e-8
             )
+        
+        return optimizer
 
     def loss(self, output, y_placeholder):
-        diff = tf.substract(self.output, y_placeholder)
+        diff = tf.subtract(self.output, y_placeholder)
 
         self.mse = tf.reduce_mean(tf.square(diff, name="diff_square"), name="mse")
         self.image_loss = tf.identity(self.mse, name="image_loss")
@@ -306,3 +331,49 @@ class Dcscn(BaseNetwork):
         tf.summary.scalar("loss", self.loss)
 
         return self.loss
+    
+    def metrics(self, output, y_placeholder):
+        with tf.name_scope("metrics_calc"):
+            y_placeholder = tf.cast(y_placeholder, tf.float32)
+
+            if self.is_debug:
+                y_placeholder = tf.Print(y_placeholder, [tf.shape(y_placeholder), tf.argmax(y_placeholder, 1)], message="y_placeholder:", summarize=200)
+                output = tf.Print(output,
+                                   [tf.shape(output), tf.argmax(output, 1)], message="output:", summarize=200)
+
+            accuracy, accuracy_update = self._calc_top_k(output, y_placeholder, k=1)
+
+            if(self.num_classes > 3):
+                accuracy_top3, accuracy_top3_update = self._calc_top_k(output, y_placeholder, k=3)
+            else:
+                accuracy_top3, accuracy_top3_update = tf.compat.v1.metrics.mean(tf.ones(self.batch_size))
+
+            if(self.num_classes > 5):
+                accuracy_top5, accuracy_top5_update = self._calc_top_k(output, y_placeholder, k=5)
+            else:
+                accuracy_top5, accuracy_top5_update = tf.compat.v1.metrics.mean(tf.ones(self.batch_size))
+
+            updates = tf.group(accuracy_update, accuracy_top3_update, accuracy_top5_update)
+
+        metrics_dict = {"accuracy": accuracy, "accuracy_top3": accuracy_top3, "accuracy_top5": accuracy_top5}
+        return metrics_dict, updates
+
+    def _calc_top_k(self, softmax, labels, k):
+        """Calculate the mean top k accuracy.
+        In the case that multiple classes are on the top k boundary, the order of the class indices is used
+        to break the tie - lower indices given preference - so that only k predictions are included in the top k.
+
+        Args:
+            softmax (Tensor): class predictions from the softmax. Shape is [batch_size, num_classes].
+            labels (Tensor): onehot ground truth labels. Shape is [batch_size, num_classes].
+            k (Int): number of top predictions to use.
+
+        """
+
+        argmax_labels = tf.cast(tf.argmax(labels, 1), tf.int32)
+        argmax_labels = tf.expand_dims(argmax_labels, 1)
+        _, top_predicted_indices = tf.nn.top_k(softmax, k)
+        accuracy_topk, accuracy_topk_update = tf.compat.v1.metrics.mean(
+            tf.cast(tf.reduce_any(tf.equal(top_predicted_indices, argmax_labels), axis=1), tf.float32)
+        )
+        return accuracy_topk, accuracy_topk_update
