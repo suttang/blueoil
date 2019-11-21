@@ -52,7 +52,7 @@ PRETRAIN_FILE = ""
 
 # PRE_PROCESSOR = None
 PRE_PROCESSOR = Sequence([
-    Scale(SCALE),
+    Scale(1/SCALE),
 ])
 POST_PROCESSOR = None
 
