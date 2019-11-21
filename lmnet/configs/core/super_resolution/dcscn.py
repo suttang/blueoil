@@ -18,76 +18,61 @@ import tensorflow as tf
 
 from lmnet.common import Tasks
 from lmnet.networks.super_resolution.dcscn import Dcscn
-from lmnet.datasets.div2k import Div2k
+from lmnet.datasets.div2k import Div2kSuperResolution
+
 from lmnet.data_processor import Sequence
+
 from lmnet.pre_processor import (
-    Resize,
     PerImageStandardization,
-)
-from lmnet.data_augmentor import (
-    Crop,
-    FlipLeftRight,
-    Pad,
 )
 
 IS_DEBUG = False
 
 NETWORK_CLASS = Dcscn
-DATASET_CLASS = Div2k
+DATASET_CLASS = Div2kSuperResolution
 
-IMAGE_SIZE = [32, 32]
-BATCH_SIZE = 100
+SCALE = 2
+
+IMAGE_SIZE = [128, 128]
+BATCH_SIZE = 10
 DATA_FORMAT = "NHWC"
 TASK = Tasks.SUPER_RESOLUTION
-CLASSES = DATASET_CLASS.classes
+CLASSES = []
 
-MAX_STEPS = 100000
-SAVE_CHECKPOINT_STEPS = 100000
+MAX_EPOCHS = 1
+SAVE_CHECKPOINT_STEPS = 1000
 KEEP_CHECKPOINT_MAX = 5
 TEST_STEPS = 1000
 SUMMARISE_STEPS = 100
+
+
 # pretrain
 IS_PRETRAIN = False
 PRETRAIN_VARS = []
 PRETRAIN_DIR = ""
 PRETRAIN_FILE = ""
 
-
-# for debug
-# MAX_STEPS = 10
-# BATCH_SIZE = 31
-# SAVE_CHECKPOINT_STEPS = 2
-# KEEP_CHECKPOINT_MAX = 5
-# TEST_STEPS = 10
-# SUMMARISE_STEPS = 2
-# IS_DEBUG = True
-
+# PRE_PROCESSOR = None
 PRE_PROCESSOR = Sequence([
-    Resize(size=IMAGE_SIZE),
     PerImageStandardization(),
 ])
 POST_PROCESSOR = None
 
 NETWORK = EasyDict()
+
 NETWORK.OPTIMIZER_CLASS = tf.train.MomentumOptimizer
-NETWORK.OPTIMIZER_KWARGS = {"momentum": 0.9}
-NETWORK.LEARNING_RATE_FUNC = tf.train.piecewise_constant
-step_per_epoch = int(50000 / BATCH_SIZE)
-NETWORK.LEARNING_RATE_KWARGS = {
-    "values": [0.01, 0.1, 0.01, 0.001, 0.0001],
-    "boundaries": [step_per_epoch, step_per_epoch * 50, step_per_epoch * 100, step_per_epoch * 198],
-}
+NETWORK.OPTIMIZER_KWARGS = {'momentum': 0.9, 'learning_rate': 0.001}
+NETWORK.LEARNING_RATE_FUNC = None
+NETWORK.LEARNING_RATE_KWARGS = None
+
 NETWORK.IMAGE_SIZE = IMAGE_SIZE
 NETWORK.BATCH_SIZE = BATCH_SIZE
 NETWORK.DATA_FORMAT = DATA_FORMAT
+NETWORK.WEIGHT_DECAY_RATE = 0.0005
 
-# dataset
 DATASET = EasyDict()
+DATASET.SCALE = SCALE
 DATASET.BATCH_SIZE = BATCH_SIZE
 DATASET.DATA_FORMAT = DATA_FORMAT
 DATASET.PRE_PROCESSOR = PRE_PROCESSOR
-DATASET.AUGMENTOR = Sequence([
-    Pad(2),
-    Crop(size=IMAGE_SIZE),
-    FlipLeftRight(),
-])
+DATASET.AUGMENTOR = Sequence([])
