@@ -78,8 +78,7 @@ class Div2kSuperResolution(SuperResolutionBase):
         return self.dataset.num_per_epoch
     
     def __getitem__(self, i):
-        (image,) = self.dataset[i]
-        import pdb; pdb.set_trace()
+        image, _ = self.dataset[i]
         return image, image
     
     def __len__(self):
