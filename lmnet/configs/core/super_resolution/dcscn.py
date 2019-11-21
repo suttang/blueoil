@@ -22,9 +22,7 @@ from lmnet.datasets.div2k import Div2kSuperResolution
 
 from lmnet.data_processor import Sequence
 
-from lmnet.pre_processor import (
-    PerImageStandardization,
-)
+from lmnet.pre_processor import Scale
 
 IS_DEBUG = False
 
@@ -54,7 +52,7 @@ PRETRAIN_FILE = ""
 
 # PRE_PROCESSOR = None
 PRE_PROCESSOR = Sequence([
-    PerImageStandardization(),
+    Scale(SCALE),
 ])
 POST_PROCESSOR = None
 

@@ -18,6 +18,7 @@ import os
 from glob import glob
 
 from lmnet.datasets.base import Base
+from lmnet.datasets.base import SuperResolutionBase
 from lmnet.utils.image import load_image
 
 
@@ -49,3 +50,37 @@ class Div2k(Base):
 
     def __len__(self):
         return self.num_per_epoch
+
+
+class Div2kSuperResolution(SuperResolutionBase):
+    classes = Div2k.classes
+    num_classes = Div2k.num_classes
+    extend_dir = Div2k.extend_dir
+    available_subsets = Div2k.available_subsets
+
+    def __init__(self, scale, **kwargs):
+        self.dataset = Div2k(**kwargs)
+        self.scale = scale
+
+        self.subset = self.dataset.subset
+        self.batch_size = self.dataset.batch_size
+        self.augmentor = self.dataset.augmentor
+        self.pre_processor = self.dataset.pre_processor
+        self.data_format = self.dataset.data_format
+        self.seed = self.dataset.seed
+
+    @property
+    def files(self):
+        return self.dataset.files
+    
+    @property
+    def num_per_epoch(self):
+        return self.dataset.num_per_epoch
+    
+    def __getitem__(self, i):
+        (image,) = self.dataset[i]
+        import pdb; pdb.set_trace()
+        return image, image
+    
+    def __len__(self):
+        return len(self.dataset)
