@@ -348,26 +348,6 @@ class PerImageStandardization(Processor):
         return dict({'image': image}, **kwargs)
 
 
-class Scale(Processor):
-    """Change image scale.
-    """
-    def __init__(self, scale):
-        self.scale = scale
-
-    def __call__(self, image, method=PIL.Image.BICUBIC, **kwargs):
-        width = image.shape[1]
-        height = image.shape[0]
-
-        new_width = int(width * self.scale)
-        new_height = int(height * self.scale)
-
-        scaled_image = PIL.Image.fromarray(image)
-        scaled_image = scaled_image.resize((new_width, new_height), resample=method)
-        scaled_image = np.asarray(scaled_image)
-
-        return dict({'image': scaled_image, **kwargs})
-
-
 class Resize(Processor):
     """Resize image.
 
@@ -497,3 +477,23 @@ class JointsToGaussianHeatmap(Processor):
                                              num_joints=self.num_joints, stride=self.stride,
                                              sigma=self.sigma)
         return dict({'heatmap': heatmap}, **kwargs)
+
+
+class Scale(Processor):
+    """Change image scale.
+    """
+    def __init__(self, scale):
+        self.scale = scale
+
+    def __call__(self, image, method=PIL.Image.BICUBIC, **kwargs):
+        width = image.shape[1]
+        height = image.shape[0]
+
+        new_width = int(width * self.scale)
+        new_height = int(height * self.scale)
+
+        scaled_image = PIL.Image.fromarray(image)
+        scaled_image = scaled_image.resize((new_width, new_height), resample=method)
+        scaled_image = np.asarray(scaled_image)
+
+        return dict({'image': scaled_image, **kwargs})

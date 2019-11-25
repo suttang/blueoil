@@ -158,6 +158,9 @@ class ObjectDetectionBase(Base, metaclass=ABCMeta):
 
         return np.array(results)
 
+class SuperResolutionBase(Base, metaclass=ABCMeta):
+    pass
+
 
 class KeypointDetectionBase(Base, metaclass=ABCMeta):
 

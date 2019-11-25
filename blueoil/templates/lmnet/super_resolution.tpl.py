@@ -24,6 +24,10 @@ from lmnet.datasets.{{dataset_module}} import {{dataset_class}}
 ){% endif %}
 from lmnet.data_processor import Sequence
 
+from lmnet.pre_processor import (
+    PerImageStandardization,
+)
+
 IS_DEBUG = False
 
 NETWORK_CLASS = {{network_class}}
@@ -49,7 +53,10 @@ PRETRAIN_VARS = []
 PRETRAIN_DIR = ""
 PRETRAIN_FILE = ""
 
-PRE_PROCESSOR = None
+# PRE_PROCESSOR = None
+PRE_PROCESSOR = Sequence([
+    PerImageStandardization(),
+])
 POST_PROCESSOR = None
 
 NETWORK = EasyDict()
