@@ -108,15 +108,6 @@ class Dcscn(BaseNetwork):
         output = tf.nn.relu(input) + tf.multiply(alphas, (input - tf.abs(input))) * 0.5
         return output
 
-    def _prelu(self, input, features, name=""):
-        with tf.variable_scope("prelu"):
-            alphas = tf.Variable(
-                tf.constant(0.1, shape=[features]), name=name + "_prelu"
-            )
-
-        output = tf.nn.relu(input) + tf.multiply(alphas, (input - tf.abs(input))) * 0.5
-        return output
-
     def _convolutional_block(
         self,
         name,
@@ -124,9 +115,9 @@ class Dcscn(BaseNetwork):
         kernel_size,
         input_feature_num,
         output_feature_num,
+        is_training,
         use_batch_norm=False,
         dropout_rate=1.0,
-        dropout=None,
     ):
         with tf.variable_scope(name):
             shape_of_weight = [
@@ -143,22 +134,22 @@ class Dcscn(BaseNetwork):
             z = self._conv2d(
                 input, w, stride=1, bias=b, use_batch_norm=use_batch_norm, name=name
             )
-
-            if dropout_rate < 1.0:
-                z = tf.nn.dropout(z, dropout, name="dropout")
+            
+            keep_prob = tf.constant(dropout_rate)
+            z = tf.layers.dropout(z, rate=keep_prob, training=is_training, name="dropout")
 
             a = self._prelu(z, output_feature_num, name=name)
 
             self.H.append(a)
 
             # Save image
-            shapes = w.get_shape().as_list()
-            weights = tf.reshape(w, [shapes[0], shapes[1], shapes[2] * shapes[3]])
-            weights_transposed = tf.transpose(weights, [2, 0, 1])
-            weights_transposed = tf.reshape(
-                weights_transposed, [shapes[2] * shapes[3], shapes[0], shapes[1], 1]
-            )
-            tf.summary.image("weights", weights_transposed, max_outputs=6)
+            # shapes = w.get_shape().as_list()
+            # weights = tf.reshape(w, [shapes[0], shapes[1], shapes[2] * shapes[3]])
+            # weights_transposed = tf.transpose(weights, [2, 0, 1])
+            # weights_transposed = tf.reshape(
+            #     weights_transposed, [shapes[2] * shapes[3], shapes[0], shapes[1], 1]
+            # )
+            # tf.summary.image("weights", weights_transposed, max_outputs=6)
 
         self.Weights.append(w)
         self.Biases.append(b)
@@ -166,7 +157,7 @@ class Dcscn(BaseNetwork):
         return a
 
     def _pixel_shuffler(
-        self, name, input, kernel_size, scale, input_feature_num, output_feature_num
+        self, name, input, kernel_size, scale, input_feature_num, output_feature_num, is_training
     ):
         with tf.variable_scope(name):
             self._convolutional_block(
@@ -176,6 +167,7 @@ class Dcscn(BaseNetwork):
                 input_feature_num=input_feature_num,
                 output_feature_num=scale * scale * output_feature_num,
                 use_batch_norm=False,
+                is_training=is_training
             )
 
             self.H.append(tf.depth_to_space(self.H[-1], scale))
@@ -187,21 +179,31 @@ class Dcscn(BaseNetwork):
         y = tf.placeholder(
             tf.float32, shape=[None, None, None, self.output_channel], name="y"
         )
-        self.x2 = tf.placeholder(
-            tf.float32, shape=[None, None, None, self.output_channel], name="x2"
-        )
-        self.learning_rate = tf.placeholder(tf.float32, shape=[], name="LearningRate")
-        self.dropout = tf.placeholder(tf.float32, shape=[], name="dropout_keep_rate")
         self.is_training = tf.placeholder(tf.bool, name="is_training")
 
         return x, y
 
-    def forward(self, x, x2, dropout):
+    def base(self, x, is_training):
         # building feature extraction layers
         output_feature_num = self.filters
         total_output_feature_num = 0
         input_feature_num = self.input_channel
         input_tensor = x
+        
+        x = tf.Print(x, [tf.shape(x)], message="shape of x:", summarize=1000)
+        x = tf.Print(x, [x], message="value of x:", summarize=100)
+        input_shape = tf.shape(x)
+        height = input_shape[1]
+        width = input_shape[2]
+
+        x2 = tf.image.resize_images(
+            input_tensor,
+            (height * 2, width * 2),
+            method=tf.image.ResizeMethod.BICUBIC
+        )
+
+        x2 = tf.Print(x2, [tf.shape(x2)], message="shape of x2:", summarize=200)
+        x2 = tf.Print(x2, [x2], message="value of x2:", summarize=100)
 
         for i in range(self.layers):
             if self.min_filters != 0 and i > 0:
@@ -225,7 +227,7 @@ class Dcscn(BaseNetwork):
                 output_feature_num=output_feature_num,
                 use_batch_norm=self.batch_norm,
                 dropout_rate=self.dropout_rate,
-                dropout=dropout,
+                is_training=is_training
             )
 
             input_feature_num = output_feature_num
@@ -243,7 +245,7 @@ class Dcscn(BaseNetwork):
             input_feature_num=total_output_feature_num,
             output_feature_num=64,
             dropout_rate=self.dropout_rate,
-            dropout=dropout,
+            is_training=is_training
         )
 
         self._convolutional_block(
@@ -253,7 +255,7 @@ class Dcscn(BaseNetwork):
             input_feature_num=total_output_feature_num,
             output_feature_num=32,
             dropout_rate=self.dropout_rate,
-            dropout=dropout,
+            is_training=is_training
         )
         self._convolutional_block(
             "B2",
@@ -262,7 +264,7 @@ class Dcscn(BaseNetwork):
             input_feature_num=32,
             output_feature_num=32,
             dropout_rate=self.dropout_rate,
-            dropout=dropout,
+            is_training=is_training
         )
         self.H.append(tf.concat([self.H[-1], self.H[-3]], 3, name="Concat2"))
 
@@ -275,6 +277,7 @@ class Dcscn(BaseNetwork):
             scale=self.scale,
             input_feature_num=pixel_shuffler_channel,
             output_feature_num=pixel_shuffler_channel,
+            is_training=is_training
         )
 
         self._convolutional_block(
@@ -283,43 +286,38 @@ class Dcscn(BaseNetwork):
             kernel_size=3,
             input_feature_num=pixel_shuffler_channel,
             output_feature_num=self.output_channel,
+            dropout_rate=1.0,
+            is_training=is_training
         )
 
         y_hat = tf.add(self.H[-1], x2, name="output")
 
-        with tf.name_scope("Y_"):
-            mean = tf.reduce_mean(y_hat)
-            stddev = tf.sqrt(tf.reduce_mean(tf.square(y_hat - mean)))
-            tf.summary.scalar("output/mean", mean)
-            tf.summary.scalar("output/stddev", stddev)
-            tf.summary.histogram("output", y_hat)
+        # with tf.name_scope("Y_"):
+        #     mean = tf.reduce_mean(y_hat)
+        #     stddev = tf.sqrt(tf.reduce_mean(tf.square(y_hat - mean)))
+        #     tf.summary.scalar("output/mean", mean)
+        #     tf.summary.scalar("output/stddev", stddev)
+        #     tf.summary.histogram("output", y_hat)
 
         return y_hat
 
     def inference(self, x_placeholder, is_training):
-        y_hat = self.forward(x_placeholder, self.x2, self.dropout)
+        x_placeholder = tf.Print(x_placeholder, [tf.shape(x_placeholder)], message="shape of x_placeholder:", summarize=1000)
+        is_training = tf.Print(is_training, [is_training], message="is_training:", summarize=1000)
+
+        y_hat = self.base(x_placeholder, is_training=is_training)
+        # output = self.post_process(x_placeholder, y_hat)
+
+        y_hat = tf.Print(y_hat, [tf.shape(y_hat)], message="shape of y_hat:", summarize=1000)
+        y_hat = tf.Print(y_hat, [y_hat], message="value of y_hat:", summarize=100)
+
         self.output = tf.identity(y_hat, name="output")
+        # self.output = tf.identity(output, name="output")
 
         return self.output
 
-    def optimizer(self, global_step):
-        beta1 = 0.9
-        beta2 = 0.999
-        if self.batch_norm:
-            update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-            with tf.control_dependencies(update_ops):
-                optimizer = tf.train.AdamOptimizer(
-                    self.learning_rate, beta1=beta1, beta2=beta2, epsilon=1e-8
-                )
-        else:
-            optimizer = tf.train.AdamOptimizer(
-                self.learning_rate, beta1=beta1, beta2=beta2, epsilon=1e-8
-            )
-        
-        return optimizer
-
     def loss(self, output, y_placeholder):
-        diff = tf.subtract(self.output, y_placeholder)
+        diff = tf.subtract(output, y_placeholder)
 
         self.mse = tf.reduce_mean(tf.square(diff, name="diff_square"), name="mse")
         self.image_loss = tf.identity(self.mse, name="image_loss")
@@ -328,52 +326,62 @@ class Dcscn(BaseNetwork):
         l2_norm_loss = self.weight_decay_rate + tf.add_n(l2_norm_losses)
         self.loss = self.image_loss + l2_norm_loss
 
-        tf.summary.scalar("loss", self.loss)
+        # tf.summary.scalar("loss", self.loss)
 
         return self.loss
     
-    def metrics(self, output, y_placeholder):
-        with tf.name_scope("metrics_calc"):
-            y_placeholder = tf.cast(y_placeholder, tf.float32)
+    def post_process(self, input_image, output_image):
+        with tf.name_scope("post_process"):
+            input_shape = tf.shape(input_image)
+            height = input_shape[0]
+            width = input_shape[1]
+            resized_input_image = tf.image.resize_images(
+                input_image,
+                [width * 2, height * 2],
+                method=tf.image.ResizeMethod.BICUBIC
+            )
+            # resized_yuv_image = tf.image.rgb_to_yuv(resized_input_image)
+            # output = 
+            # return resized_input_image
+            # import pdb; pdb.set_trace()
+            return output_image
 
-            if self.is_debug:
-                y_placeholder = tf.Print(y_placeholder, [tf.shape(y_placeholder), tf.argmax(y_placeholder, 1)], message="y_placeholder:", summarize=200)
-                output = tf.Print(output,
-                                   [tf.shape(output), tf.argmax(output, 1)], message="output:", summarize=200)
 
-            accuracy, accuracy_update = self._calc_top_k(output, y_placeholder, k=1)
 
-            if(self.num_classes > 3):
-                accuracy_top3, accuracy_top3_update = self._calc_top_k(output, y_placeholder, k=3)
-            else:
-                accuracy_top3, accuracy_top3_update = tf.compat.v1.metrics.mean(tf.ones(self.batch_size))
+            # # return output
+            # return output_image
+    
+    def metrics(self, output, labels):
+        output_transposed = output if self.data_format == 'NHWC' else tf.transpose(output, perm=[0, 2, 3, 1])
 
-            if(self.num_classes > 5):
-                accuracy_top5, accuracy_top5_update = self._calc_top_k(output, y_placeholder, k=5)
-            else:
-                accuracy_top5, accuracy_top5_update = tf.compat.v1.metrics.mean(tf.ones(self.batch_size))
+        output = tf.Print(output, [tf.shape(output)], message="shape of output:", summarize=1000)
+        output = tf.Print(output, [output], message="value of output:", summarize=1000)
+        # labels = tf.Print(labels, [labels])
+        # labels = tf.Print(labels)
 
-            updates = tf.group(accuracy_update, accuracy_top3_update, accuracy_top5_update)
+        # labels = tf.image.rgb_to_yuv(labels)
 
-        metrics_dict = {"accuracy": accuracy, "accuracy_top3": accuracy_top3, "accuracy_top5": accuracy_top5}
-        return metrics_dict, updates
+        results = {}
+        updates = []
+        with tf.name_scope('metrics_cals'):
+            mean_squared_error, mean_squared_error_update = tf.metrics.mean_squared_error(
+                labels,
+                output_transposed,
+            )
+            results["mean_squared_error"] = mean_squared_error
+            updates.append(mean_squared_error_update)
 
-    def _calc_top_k(self, softmax, labels, k):
-        """Calculate the mean top k accuracy.
-        In the case that multiple classes are on the top k boundary, the order of the class indices is used
-        to break the tie - lower indices given preference - so that only k predictions are included in the top k.
+            psnr_array = tf.image.psnr(labels, output, max_val=1.0)
+            psnr, psnr_update = tf.metrics.mean(psnr_array)
+            results["psnr"] = psnr
+            updates.append(psnr_update)
 
-        Args:
-            softmax (Tensor): class predictions from the softmax. Shape is [batch_size, num_classes].
-            labels (Tensor): onehot ground truth labels. Shape is [batch_size, num_classes].
-            k (Int): number of top predictions to use.
+            ssim_array = tf.image.ssim(labels, output, max_val=1.0)
+            ssim, ssim_update = tf.metrics.mean(ssim_array)
+            results["ssim"] = ssim
+            updates.append(ssim_update)
 
-        """
+            # merge all updates
+            updates_op = tf.group(*updates)
 
-        argmax_labels = tf.cast(tf.argmax(labels, 1), tf.int32)
-        argmax_labels = tf.expand_dims(argmax_labels, 1)
-        _, top_predicted_indices = tf.nn.top_k(softmax, k)
-        accuracy_topk, accuracy_topk_update = tf.compat.v1.metrics.mean(
-            tf.cast(tf.reduce_any(tf.equal(top_predicted_indices, argmax_labels), axis=1), tf.float32)
-        )
-        return accuracy_topk, accuracy_topk_update
+            return results, updates_op

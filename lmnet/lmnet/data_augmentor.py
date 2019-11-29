@@ -801,3 +801,19 @@ def affine_scale(img, scale, fill_color="white"):
     new_image.paste(scaled, (int(outer_width / 2), int(outer_height / 2)))
 
     return np.array(new_image)
+
+
+class RgbToY(data_processor.Processor):
+
+    def __init__(self, with_keys=None):
+        self.with_keys = with_keys
+
+    def __call__(self, **kwargs):
+        xform = np.array([[65.738 / 256.0, 129.057 / 256.0, 25.064 / 256.0]])
+
+        if self.with_keys is not None:
+            additionals = {v: kwargs[v].dot(xform.T) + 16 for v in self.with_keys}
+        else:
+            additionals = {}
+
+        return dict({**kwargs, **additionals})

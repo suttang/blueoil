@@ -175,8 +175,8 @@ class BaseNetwork(object):
             train_op = optimizer.apply_gradients(gradients, global_step=global_step)
 
         # Add histograms for all gradients for every layer.
-        for grad, var in gradients:
-            if grad is not None:
-                tf.compat.v1.summary.histogram(var.op.name + "/gradients", grad)
+        # for grad, var in gradients:
+        #     if grad is not None:
+        #         tf.compat.v1.summary.histogram(var.op.name + "/gradients", grad)
 
         return train_op

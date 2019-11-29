@@ -23,6 +23,7 @@ from lmnet.datasets.div2k import Div2kSuperResolution
 from lmnet.data_processor import Sequence
 
 from lmnet.pre_processor import Scale
+from lmnet.data_augmentor import Crop, RgbToY
 
 IS_DEBUG = False
 
@@ -74,4 +75,7 @@ DATASET.SCALE = SCALE
 DATASET.BATCH_SIZE = BATCH_SIZE
 DATASET.DATA_FORMAT = DATA_FORMAT
 DATASET.PRE_PROCESSOR = PRE_PROCESSOR
-DATASET.AUGMENTOR = Sequence([Crop(size=CROP_SIZE)])
+DATASET.AUGMENTOR = Sequence([
+    Crop(size=CROP_SIZE * SCALE),
+    RgbToY(with_keys=('image', 'mask'))
+])

@@ -486,14 +486,25 @@ class Scale(Processor):
         self.scale = scale
 
     def __call__(self, image, method=PIL.Image.BICUBIC, **kwargs):
-        width = image.shape[1]
-        height = image.shape[0]
+        height, width = image.shape[0:2]
 
         new_width = int(width * self.scale)
         new_height = int(height * self.scale)
 
-        scaled_image = PIL.Image.fromarray(image)
-        scaled_image = scaled_image.resize((new_width, new_height), resample=method)
-        scaled_image = np.asarray(scaled_image)
-
-        return dict({'image': scaled_image, **kwargs})
+        if len(image.shape) == 3 and image.shape[2] == 3:
+            # RGB
+            image = PIL.Image.fromarray(image, "RGB")
+            image = image.resize([new_width, new_height], resample=method)
+            image = np.asarray(image)
+        elif len(image.shape) == 3 and image.shape[2] == 4:
+            # RGBA
+            image = PIL.Image.fromarray(image, "RGB")
+            image = image.resize([new_width, new_height], resample=method)
+            image = np.asarray(image)
+        else:
+            image = PIL.Image.fromarray(image.reshape(height, width))
+            image = image.resize([new_width, new_height], resample=method)
+            image = np.asarray(image)
+            image = image.reshape(new_height, new_width, 1)
+        
+        return dict({'image': image, **kwargs})
