@@ -18,6 +18,7 @@ import math
 import tensorflow as tf
 
 from lmnet.networks.base import BaseNetwork
+from lmnet.layers import conv2d
 
 
 class Dcscn(BaseNetwork):
@@ -127,18 +128,27 @@ class Dcscn(BaseNetwork):
                 output_feature_num,
             ]
             w = self._weight(shape=shape_of_weight, name="conv_W")
+            w = tf.Print(w, [w], message="{} w: ".format(name), summarize=5)
 
             shape_of_bias = [output_feature_num]
             b = self._bias(shape=shape_of_bias, name="conv_B")
+            b = tf.Print(b, [b], message="{} b: ".format(name), summarize=5)
 
             z = self._conv2d(
                 input, w, stride=1, bias=b, use_batch_norm=use_batch_norm, name=name
             )
+            z = tf.Print(z, [z], message="{} z: ".format(name), summarize=5)
             
-            keep_prob = tf.constant(dropout_rate)
-            z = tf.layers.dropout(z, rate=keep_prob, training=is_training, name="dropout")
-
             a = self._prelu(z, output_feature_num, name=name)
+            a = tf.Print(a, [a], message="{} prelu: ".format(name), summarize=5)
+            
+            if dropout_rate < 1.0:
+                a = tf.nn.dropout(a, dropout_rate, name="dropout")
+                a = tf.Print(a, [a], message="{} dropout: ".format(name), summarize=5)
+            # keep_prob = tf.constant(dropout_rate)
+            # a = tf.layers.dropout(a, rate=keep_prob, training=is_training, name="dropout")
+            # a = tf.Print(a, [a], message="{} dropout: ".format(name), summarize=5)
+
 
             self.H.append(a)
 
@@ -183,6 +193,13 @@ class Dcscn(BaseNetwork):
 
         return x, y
 
+    def calc_filters(self, first, last, layers, decay):
+        return [
+            int((first - last) * (1 - pow(i / float(layers - 1), 1.0 / decay)) + last)
+            for i in range(layers)
+        ]
+        
+
     def base(self, x, is_training):
         # building feature extraction layers
         output_feature_num = self.filters
@@ -191,7 +208,7 @@ class Dcscn(BaseNetwork):
         input_tensor = x
         
         x = tf.Print(x, [tf.shape(x)], message="shape of x:", summarize=1000)
-        x = tf.Print(x, [x], message="value of x:", summarize=100)
+        x = tf.Print(x, [x], message="value of x:", summarize=5)
         input_shape = tf.shape(x)
         height = input_shape[1]
         width = input_shape[2]
@@ -202,8 +219,8 @@ class Dcscn(BaseNetwork):
             method=tf.image.ResizeMethod.BICUBIC
         )
 
-        x2 = tf.Print(x2, [tf.shape(x2)], message="shape of x2:", summarize=200)
-        x2 = tf.Print(x2, [x2], message="value of x2:", summarize=100)
+        x2 = tf.Print(x2, [tf.shape(x2)], message="shape of x2:", summarize=1000)
+        x2 = tf.Print(x2, [x2], message="value of x2:", summarize=5)
 
         for i in range(self.layers):
             if self.min_filters != 0 and i > 0:
@@ -218,7 +235,6 @@ class Dcscn(BaseNetwork):
                         x1, y1, output_feature_num
                     )
                 )
-
             self._convolutional_block(
                 "CNN%d" % (i + 1),
                 input_tensor,
@@ -286,7 +302,6 @@ class Dcscn(BaseNetwork):
             kernel_size=3,
             input_feature_num=pixel_shuffler_channel,
             output_feature_num=self.output_channel,
-            dropout_rate=1.0,
             is_training=is_training
         )
 
@@ -309,7 +324,7 @@ class Dcscn(BaseNetwork):
         # output = self.post_process(x_placeholder, y_hat)
 
         y_hat = tf.Print(y_hat, [tf.shape(y_hat)], message="shape of y_hat:", summarize=1000)
-        y_hat = tf.Print(y_hat, [y_hat], message="value of y_hat:", summarize=100)
+        y_hat = tf.Print(y_hat, [y_hat], message="value of y_hat:", summarize=5)
 
         self.output = tf.identity(y_hat, name="output")
         # self.output = tf.identity(output, name="output")
@@ -317,7 +332,7 @@ class Dcscn(BaseNetwork):
         return self.output
 
     def loss(self, output, y_placeholder):
-        diff = tf.subtract(output, y_placeholder)
+        diff = tf.subtract(output, y_placeholder, "diff")
 
         self.mse = tf.reduce_mean(tf.square(diff, name="diff_square"), name="mse")
         self.image_loss = tf.identity(self.mse, name="image_loss")
@@ -355,7 +370,7 @@ class Dcscn(BaseNetwork):
         output_transposed = output if self.data_format == 'NHWC' else tf.transpose(output, perm=[0, 2, 3, 1])
 
         output = tf.Print(output, [tf.shape(output)], message="shape of output:", summarize=1000)
-        output = tf.Print(output, [output], message="value of output:", summarize=1000)
+        output = tf.Print(output, [output], message="value of output:", summarize=5)
         # labels = tf.Print(labels, [labels])
         # labels = tf.Print(labels)
 
