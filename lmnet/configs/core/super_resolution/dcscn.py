@@ -61,7 +61,7 @@ POST_PROCESSOR = None
 NETWORK = EasyDict()
 
 NETWORK.OPTIMIZER_CLASS = tf.train.MomentumOptimizer
-NETWORK.OPTIMIZER_KWARGS = {'momentum': 0.9, 'learning_rate': 0.001}
+NETWORK.OPTIMIZER_KWARGS = {'momentum': 0.9, 'learning_rate': 0.0002}
 NETWORK.LEARNING_RATE_FUNC = None
 NETWORK.LEARNING_RATE_KWARGS = None
 
