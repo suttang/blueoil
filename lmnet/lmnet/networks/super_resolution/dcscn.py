@@ -128,27 +128,18 @@ class Dcscn(BaseNetwork):
                 output_feature_num,
             ]
             w = self._weight(shape=shape_of_weight, name="conv_W")
-            w = tf.Print(w, [w], message="{} w: ".format(name), summarize=5)
 
             shape_of_bias = [output_feature_num]
             b = self._bias(shape=shape_of_bias, name="conv_B")
-            b = tf.Print(b, [b], message="{} b: ".format(name), summarize=5)
 
             z = self._conv2d(
                 input, w, stride=1, bias=b, use_batch_norm=use_batch_norm, name=name
             )
-            z = tf.Print(z, [z], message="{} z: ".format(name), summarize=5)
             
             a = self._prelu(z, output_feature_num, name=name)
-            a = tf.Print(a, [a], message="{} prelu: ".format(name), summarize=5)
             
             if dropout_rate < 1.0:
                 a = tf.nn.dropout(a, dropout_rate, name="dropout")
-                a = tf.Print(a, [a], message="{} dropout: ".format(name), summarize=5)
-            # keep_prob = tf.constant(dropout_rate)
-            # a = tf.layers.dropout(a, rate=keep_prob, training=is_training, name="dropout")
-            # a = tf.Print(a, [a], message="{} dropout: ".format(name), summarize=5)
-
 
             self.H.append(a)
 
@@ -207,8 +198,6 @@ class Dcscn(BaseNetwork):
         input_feature_num = self.input_channel
         input_tensor = x
         
-        x = tf.Print(x, [tf.shape(x)], message="shape of x:", summarize=1000)
-        x = tf.Print(x, [x], message="value of x:", summarize=5)
         input_shape = tf.shape(x)
         height = input_shape[1]
         width = input_shape[2]
@@ -218,9 +207,6 @@ class Dcscn(BaseNetwork):
             (height * 2, width * 2),
             method=tf.image.ResizeMethod.BICUBIC
         )
-
-        x2 = tf.Print(x2, [tf.shape(x2)], message="shape of x2:", summarize=1000)
-        x2 = tf.Print(x2, [x2], message="value of x2:", summarize=5)
 
         for i in range(self.layers):
             if self.min_filters != 0 and i > 0:
@@ -317,14 +303,8 @@ class Dcscn(BaseNetwork):
         return y_hat
 
     def inference(self, x_placeholder, is_training):
-        x_placeholder = tf.Print(x_placeholder, [tf.shape(x_placeholder)], message="shape of x_placeholder:", summarize=1000)
-        is_training = tf.Print(is_training, [is_training], message="is_training:", summarize=1000)
-
         y_hat = self.base(x_placeholder, is_training=is_training)
         # output = self.post_process(x_placeholder, y_hat)
-
-        y_hat = tf.Print(y_hat, [tf.shape(y_hat)], message="shape of y_hat:", summarize=1000)
-        y_hat = tf.Print(y_hat, [y_hat], message="value of y_hat:", summarize=5)
 
         self.output = tf.identity(y_hat, name="output")
         # self.output = tf.identity(output, name="output")
@@ -367,10 +347,13 @@ class Dcscn(BaseNetwork):
             # return output_image
     
     def metrics(self, output, labels):
+        # output = tf.Print(output, [tf.shape(output)], message="output: ", summarize=10)
+        # labels = tf.Print(labels, [tf.shape(labels)], message="labels: ", summarize=10)
         output_transposed = output if self.data_format == 'NHWC' else tf.transpose(output, perm=[0, 2, 3, 1])
 
-        output = tf.Print(output, [tf.shape(output)], message="shape of output:", summarize=1000)
-        output = tf.Print(output, [output], message="value of output:", summarize=5)
+
+        # output = tf.Print(output, [tf.shape(output)], message="shape of output:", summarize=1000)
+        # output = tf.Print(output, [output], message="value of output:", summarize=5)
         # labels = tf.Print(labels, [labels])
         # labels = tf.Print(labels)
 

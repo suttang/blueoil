@@ -34,12 +34,12 @@ SCALE = 2
 CROP_SIZE = 48
 
 IMAGE_SIZE = [128, 128]
-BATCH_SIZE = 10
+BATCH_SIZE = 1
 DATA_FORMAT = "NHWC"
 TASK = Tasks.SUPER_RESOLUTION
 CLASSES = []
 
-MAX_EPOCHS = 1
+MAX_EPOCHS = 50
 SAVE_CHECKPOINT_STEPS = 1000
 KEEP_CHECKPOINT_MAX = 5
 TEST_STEPS = 1000
@@ -55,6 +55,7 @@ PRETRAIN_FILE = ""
 # PRE_PROCESSOR = None
 PRE_PROCESSOR = Sequence([
     Scale(1/SCALE),
+    RgbToY(with_keys=('image', 'mask')),
 ])
 POST_PROCESSOR = None
 
@@ -62,8 +63,6 @@ NETWORK = EasyDict()
 
 NETWORK.OPTIMIZER_CLASS = tf.train.AdamOptimizer
 NETWORK.OPTIMIZER_KWARGS = {'learning_rate': 0.0002, 'beta1': 0.9, 'beta2': 0.999}
-# NETWORK.OPTIMIZER_CLASS = tf.train.MomentumOptimizer
-# NETWORK.OPTIMIZER_KWARGS = {'momentum': 0.9, 'learning_rate': 0.0002}
 NETWORK.LEARNING_RATE_FUNC = None
 NETWORK.LEARNING_RATE_KWARGS = None
 
@@ -79,5 +78,4 @@ DATASET.DATA_FORMAT = DATA_FORMAT
 DATASET.PRE_PROCESSOR = PRE_PROCESSOR
 DATASET.AUGMENTOR = Sequence([
     Crop(size=CROP_SIZE * SCALE),
-    RgbToY(with_keys=('image', 'mask'))
 ])
