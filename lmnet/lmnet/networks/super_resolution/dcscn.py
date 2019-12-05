@@ -192,6 +192,8 @@ class Dcscn(BaseNetwork):
         
 
     def base(self, x, is_training):
+        tf.summary.image("input_image", x)
+
         # building feature extraction layers
         output_feature_num = self.filters
         total_output_feature_num = 0
@@ -207,6 +209,8 @@ class Dcscn(BaseNetwork):
             (height * 2, width * 2),
             method=tf.image.ResizeMethod.BICUBIC
         )
+
+        tf.summary.image("input_bicubic_image", x2)
 
         for i in range(self.layers):
             if self.min_filters != 0 and i > 0:
@@ -300,6 +304,8 @@ class Dcscn(BaseNetwork):
         #     tf.summary.scalar("output/stddev", stddev)
         #     tf.summary.histogram("output", y_hat)
 
+        # tf.summary.image("output_image", y_hat)
+
         return y_hat
 
     def inference(self, x_placeholder, is_training):
@@ -312,18 +318,25 @@ class Dcscn(BaseNetwork):
         return self.output
 
     def loss(self, output, y_placeholder):
-        diff = tf.subtract(output, y_placeholder, "diff")
+        with tf.name_scope("loss"):
+            diff = tf.subtract(output, y_placeholder, "diff")
 
-        self.mse = tf.reduce_mean(tf.square(diff, name="diff_square"), name="mse")
-        self.image_loss = tf.identity(self.mse, name="image_loss")
+            self.mse = tf.reduce_mean(tf.square(diff, name="diff_square"), name="mse")
+            self.image_loss = tf.identity(self.mse, name="image_loss")
 
-        l2_norm_losses = [tf.nn.l2_loss(w) for w in self.Weights]
-        l2_norm_loss = self.weight_decay_rate + tf.add_n(l2_norm_losses)
-        self.loss = self.image_loss + l2_norm_loss
+            l2_norm_losses = [tf.nn.l2_loss(w) for w in self.Weights]
+            l2_norm_loss = self.weight_decay_rate + tf.add_n(l2_norm_losses)
+            self.loss = self.image_loss + l2_norm_loss
 
-        # tf.summary.scalar("loss", self.loss)
+            tf.summary.scalar("loss", self.loss)
+            tf.summary.scalar("weight_decay", l2_norm_loss)
 
-        return self.loss
+            return self.loss
+
+    def summary(self, output, labels):
+        tf.summary.image("output_image", output)
+        tf.summary.image("grand_truth", labels)
+        return super().summary(output, labels)
     
     def post_process(self, input_image, output_image):
         with tf.name_scope("post_process"):
