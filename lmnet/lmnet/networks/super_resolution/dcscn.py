@@ -108,22 +108,17 @@ class Dcscn(BaseNetwork):
         dropout_rate=1.0,
     ):
         with tf.variable_scope(name):
-            shape_of_weight = [
-                kernel_size,
-                kernel_size,
-                input_feature_num,
-                output_feature_num,
-            ]
-            w = self._weight(shape=shape_of_weight, name="conv_W")
-
-            shape_of_bias = [output_feature_num]
-            b = self._bias(shape=shape_of_bias, name="conv_B")
-
-            z = self._conv2d(
-                input, w, stride=1, bias=b, use_batch_norm=use_batch_norm, name=name
+            a = tf.layers.conv2d(
+                inputs=input,
+                filters=output_feature_num,
+                kernel_size=kernel_size,
+                strides=1,
+                padding="SAME",
+                # TODO: prelu
+                activation=tf.nn.relu,
+                kernel_initializer=tf.contrib.layers.variance_scaling_initializer(),
+                kernel_regularizer=tf.contrib.layers.l2_regularizer(self.weight_decay_rate),
             )
-            
-            a = self._prelu(z, output_feature_num, name=name)
             
             if dropout_rate < 1.0:
                 a = tf.nn.dropout(a, dropout_rate, name="dropout")
@@ -138,9 +133,6 @@ class Dcscn(BaseNetwork):
             #     weights_transposed, [shapes[2] * shapes[3], shapes[0], shapes[1], 1]
             # )
             # tf.summary.image("weights", weights_transposed, max_outputs=6)
-
-        self.Weights.append(w)
-        self.Biases.append(b)
 
         return a
 
@@ -311,12 +303,11 @@ class Dcscn(BaseNetwork):
             self.mse = tf.reduce_mean(tf.square(diff, name="diff_square"), name="mse")
             self.image_loss = tf.identity(self.mse, name="image_loss")
 
-            l2_norm_losses = [tf.nn.l2_loss(w) for w in self.Weights]
-            l2_norm_loss = self.weight_decay_rate + tf.add_n(l2_norm_losses)
-            self.loss = self.image_loss + l2_norm_loss
+            weight_decay_loss = tf.losses.get_regularization_loss()
+            self.loss = self.image_loss + weight_decay_loss
 
             tf.summary.scalar("loss", self.loss)
-            tf.summary.scalar("weight_decay", l2_norm_loss)
+            tf.summary.scalar("weight_decay", weight_decay_loss)
 
             return self.loss
 
