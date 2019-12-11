@@ -60,14 +60,9 @@ class Dcscn(BaseNetwork):
         self.mse = None
         self.image_loss = None
 
-    def _he_initializer(self, shape):
-        n = shape[0] * shape[1] * shape[2]
-        stddev = math.sqrt(2.0 / n)
-        return tf.truncated_normal(shape=shape, stddev=stddev)
-
     def _weight(self, shape, name="weight"):
-        initial = self._he_initializer(shape)
-        return tf.Variable(initial, name=name)
+        initializer = tf.contrib.layers.variance_scaling_initializer()
+        return tf.Variable(initializer(shape), name=name)
 
     def _bias(self, shape, initial_value=0.0, name="bias"):
         initial = tf.constant(initial_value, shape=shape)
