@@ -360,17 +360,7 @@ class Dcscn(BaseNetwork):
             # return output_image
     
     def metrics(self, output, labels):
-        # output = tf.Print(output, [tf.shape(output)], message="output: ", summarize=10)
-        # labels = tf.Print(labels, [tf.shape(labels)], message="labels: ", summarize=10)
         output_transposed = output if self.data_format == 'NHWC' else tf.transpose(output, perm=[0, 2, 3, 1])
-
-
-        # output = tf.Print(output, [tf.shape(output)], message="shape of output:", summarize=1000)
-        # output = tf.Print(output, [output], message="value of output:", summarize=5)
-        # labels = tf.Print(labels, [labels])
-        # labels = tf.Print(labels)
-
-        # labels = tf.image.rgb_to_yuv(labels)
 
         results = {}
         updates = []
@@ -382,12 +372,12 @@ class Dcscn(BaseNetwork):
             results["mean_squared_error"] = mean_squared_error
             updates.append(mean_squared_error_update)
 
-            psnr_array = tf.image.psnr(labels, output, max_val=1.0)
+            psnr_array = tf.image.psnr(labels, output, max_val=255)
             psnr, psnr_update = tf.metrics.mean(psnr_array)
             results["psnr"] = psnr
             updates.append(psnr_update)
 
-            ssim_array = tf.image.ssim(labels, output, max_val=1.0)
+            ssim_array = tf.image.ssim(labels, output, max_val=255)
             ssim, ssim_update = tf.metrics.mean(ssim_array)
             results["ssim"] = ssim
             updates.append(ssim_update)
