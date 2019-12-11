@@ -26,34 +26,26 @@ class Dcscn(BaseNetwork):
 
     def __init__(
         self,
+        scale=2,
         input_channel=1,
         output_channel=1,
+        feature_extraction_layers=12,
+        first_feature_extraction_layer_filters=196,
+        last_feature_extraction_layer_filters=48,
+        filters_decay_gamma=1.5,
         weight_decay_rate=None,
         *args,
         **kwargs
     ):
         super().__init__(*args, **kwargs)
-
         self.input_channel = input_channel
         self.output_channel = output_channel
-
-        # L2 decay
+        self.scale = scale
+        self.layers = feature_extraction_layers
+        self.filters = first_feature_extraction_layer_filters
+        self.min_filters = last_feature_extraction_layer_filters
+        self.filters_decay_gamma = filters_decay_gamma
         self.weight_decay_rate = weight_decay_rate
-
-        # Scale factor for Super Resolution (should be 2 or more)
-        self.scale = 2
-
-        # Number of feature extraction layers
-        self.layers = 12
-
-        # Number of filters of first feature-extraction CNNs
-        self.filters = 196
-
-        # Number of filters of last feature-extraction CNNs
-        self.min_filters = 48
-
-        # Number of CNN filters are decayed from [filters] to [min_filters] by this gamma
-        self.filters_decay_gamma = 1.5
 
         # Output nodes should be kept by this probability. If 1, don't use dropout.
         self.dropout_rate = 0.8
