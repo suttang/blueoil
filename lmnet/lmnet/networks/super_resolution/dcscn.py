@@ -101,7 +101,6 @@ class Dcscn(BaseNetwork):
         name,
         input,
         kernel_size,
-        input_feature_num,
         output_feature_num,
         is_training,
         use_batch_norm=False,
@@ -137,20 +136,19 @@ class Dcscn(BaseNetwork):
         return a
 
     def _pixel_shuffler(
-        self, name, input, kernel_size, scale, input_feature_num, output_feature_num, is_training
+        self, name, input, kernel_size, scale, output_feature_num, is_training
     ):
         with tf.variable_scope(name):
-            self._convolutional_block(
+            output = self._convolutional_block(
                 name + "_CNN",
                 input,
                 kernel_size,
-                input_feature_num=input_feature_num,
                 output_feature_num=scale * scale * output_feature_num,
                 use_batch_norm=False,
                 is_training=is_training
             )
 
-            self.H.append(tf.depth_to_space(self.H[-1], scale))
+            return output
 
     def placeholders(self):
         x = tf.placeholder(
@@ -163,7 +161,7 @@ class Dcscn(BaseNetwork):
 
         return x, y
 
-    def calc_filters(self, first, last, layers, decay):
+    def get_filters(self, first, last, layers, decay):
         return [
             int((first - last) * (1 - pow(i / float(layers - 1), 1.0 / decay)) + last)
             for i in range(layers)
@@ -176,7 +174,6 @@ class Dcscn(BaseNetwork):
         # building feature extraction layers
         output_feature_num = self.filters
         total_output_feature_num = 0
-        input_feature_num = self.input_channel
         input_tensor = x
         
         input_shape = tf.shape(x)
@@ -191,90 +188,72 @@ class Dcscn(BaseNetwork):
 
         tf.summary.image("input_bicubic_image", x2)
 
-        for i in range(self.layers):
-            if self.min_filters != 0 and i > 0:
-                x1 = i / float(self.layers - 1)
-                y1 = pow(x1, 1.0 / self.filters_decay_gamma)
-                output_feature_num = int(
-                    (self.filters - self.min_filters) * (1 - y1) + self.min_filters
-                )
-
-                print(
-                    "x1, {}, y1, {}, output_feature_num: {}".format(
-                        x1, y1, output_feature_num
-                    )
-                )
-            self._convolutional_block(
-                "CNN%d" % (i + 1),
+        feature_extraction_outputs = []
+        for i, filters in enumerate(self.get_filters(self.filters, self.min_filters, self.layers, self.filters_decay_gamma)):
+            output = self._convolutional_block(
+                "CNN{}".format(i + 1),
                 input_tensor,
                 kernel_size=3,
-                input_feature_num=input_feature_num,
-                output_feature_num=output_feature_num,
+                output_feature_num=filters,
                 use_batch_norm=self.batch_norm,
                 dropout_rate=self.dropout_rate,
                 is_training=is_training
             )
-
-            input_feature_num = output_feature_num
-            input_tensor = self.H[-1]
-            total_output_feature_num += output_feature_num
-
+            feature_extraction_outputs.append(output)
+            input_tensor = output
+            total_output_feature_num += filters
+        
         with tf.variable_scope("Concat"):
-            self.H_concat = tf.concat(self.H, 3, name="H_concat")
+            feature_extraction_output = tf.concat(feature_extraction_outputs, 3, name="H_concat")
 
         # building reconstruction layers
-        self._convolutional_block(
+        recon_a1_output = self._convolutional_block(
             "A1",
-            self.H_concat,
+            feature_extraction_output,
             kernel_size=1,
-            input_feature_num=total_output_feature_num,
             output_feature_num=64,
             dropout_rate=self.dropout_rate,
             is_training=is_training
         )
-
-        self._convolutional_block(
+        recon_b1_output = self._convolutional_block(
             "B1",
-            self.H_concat,
+            feature_extraction_output,
             kernel_size=1,
-            input_feature_num=total_output_feature_num,
             output_feature_num=32,
             dropout_rate=self.dropout_rate,
             is_training=is_training
         )
-        self._convolutional_block(
+        recon_b2_output = self._convolutional_block(
             "B2",
-            self.H[-1],
+            recon_b1_output,
             kernel_size=3,
-            input_feature_num=32,
             output_feature_num=32,
             dropout_rate=self.dropout_rate,
             is_training=is_training
         )
-        self.H.append(tf.concat([self.H[-1], self.H[-3]], 3, name="Concat2"))
+        recon_output = tf.concat([recon_b2_output, recon_a1_output], 3, name="Concat2")
 
         # building upsampling layer
         pixel_shuffler_channel = 64 + 32
-        self._pixel_shuffler(
+        upsample_output = self._pixel_shuffler(
             "Up-PS",
-            self.H[-1],
+            recon_output,
             kernel_size=3,
             scale=self.scale,
-            input_feature_num=pixel_shuffler_channel,
             output_feature_num=pixel_shuffler_channel,
             is_training=is_training
         )
+        upsample_output = tf.depth_to_space(upsample_output, self.scale)
 
-        self._convolutional_block(
+        output = self._convolutional_block(
             "R-CNN0",
-            self.H[-1],
+            upsample_output,
             kernel_size=3,
-            input_feature_num=pixel_shuffler_channel,
             output_feature_num=self.output_channel,
             is_training=is_training
         )
 
-        y_hat = tf.add(self.H[-1], x2, name="output")
+        y_hat = tf.add(output, x2, name="output")
 
         # with tf.name_scope("Y_"):
         #     mean = tf.reduce_mean(y_hat)
