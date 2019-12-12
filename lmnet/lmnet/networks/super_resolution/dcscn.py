@@ -53,7 +53,6 @@ class Dcscn(BaseNetwork):
         # Use batch normalization after each CNNs
         self.batch_norm = False
 
-        self.H = []
         self.Weights = []
         self.Biases = []
 
@@ -121,8 +120,6 @@ class Dcscn(BaseNetwork):
             
             if dropout_rate < 1.0:
                 a = tf.nn.dropout(a, dropout_rate, name="dropout")
-
-            self.H.append(a)
 
             # Save image
             # shapes = w.get_shape().as_list()
