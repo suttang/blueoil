@@ -86,7 +86,7 @@ class Dcscn(BaseNetwork):
         name,
         input,
         kernel_size,
-        output_feature_num,
+        filters,
         is_training,
         use_batch_norm=False,
         dropout_rate=1.0,
@@ -94,7 +94,7 @@ class Dcscn(BaseNetwork):
         with tf.variable_scope(name):
             a = tf.layers.conv2d(
                 inputs=input,
-                filters=output_feature_num,
+                filters=filters,
                 kernel_size=kernel_size,
                 strides=1,
                 padding="SAME",
@@ -119,14 +119,14 @@ class Dcscn(BaseNetwork):
         return a
 
     def _pixel_shuffler(
-        self, name, input, kernel_size, scale, output_feature_num, is_training
+        self, name, input, kernel_size, scale, filters, is_training
     ):
         with tf.variable_scope(name):
             output = self._convolutional_block(
                 name + "_CNN",
                 input,
                 kernel_size,
-                output_feature_num=scale * scale * output_feature_num,
+                filters=scale * scale * filters,
                 use_batch_norm=False,
                 is_training=is_training
             )
@@ -160,7 +160,7 @@ class Dcscn(BaseNetwork):
                 "CNN{}".format(i + 1),
                 input,
                 kernel_size=3,
-                output_feature_num=filter_num,
+                filters=filter_num,
                 use_batch_norm=self.batch_norm,
                 dropout_rate=self.dropout_rate,
                 is_training=is_training
@@ -182,7 +182,7 @@ class Dcscn(BaseNetwork):
             "A1",
             input,
             kernel_size=1,
-            output_feature_num=a_filters,
+            filters=a_filters,
             dropout_rate=self.dropout_rate,
             is_training=is_training
         )
@@ -190,7 +190,7 @@ class Dcscn(BaseNetwork):
             "B1",
             input,
             kernel_size=1,
-            output_feature_num=b_filters,
+            filters=b_filters,
             dropout_rate=self.dropout_rate,
             is_training=is_training
         )
@@ -198,19 +198,18 @@ class Dcscn(BaseNetwork):
             "B2",
             b1_output,
             kernel_size=3,
-            output_feature_num=b_filters,
+            filters=b_filters,
             dropout_rate=self.dropout_rate,
             is_training=is_training
         )
         recon_output = tf.concat([b2_output, a1_output], 3, name="Concat2")
 
         # Upsampling layer
-        upsample_output = self._pixel_shuffler(
+        upsample_output = self._convolutional_block(
             "Up-PS",
             recon_output,
             kernel_size=3,
-            scale=self.scale,
-            output_feature_num=a_filters + b_filters,
+            filters=self.scale*self.scale*(a_filters+b_filters),
             is_training=is_training
         )
         upsample_output = tf.depth_to_space(upsample_output, self.scale)
@@ -219,7 +218,7 @@ class Dcscn(BaseNetwork):
             "R-CNN0",
             upsample_output,
             kernel_size=3,
-            output_feature_num=self.output_channel,
+            filters=self.output_channel,
             is_training=is_training
         )
 
