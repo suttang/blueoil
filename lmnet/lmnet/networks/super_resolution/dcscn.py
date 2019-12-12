@@ -53,20 +53,6 @@ class Dcscn(BaseNetwork):
         # Use batch normalization after each CNNs
         self.batch_norm = False
 
-        self.Weights = []
-        self.Biases = []
-
-        self.mse = None
-        self.image_loss = None
-
-    def _weight(self, shape, name="weight"):
-        initializer = tf.contrib.layers.variance_scaling_initializer()
-        return tf.Variable(initializer(shape), name=name)
-
-    def _bias(self, shape, initial_value=0.0, name="bias"):
-        initial = tf.constant(initial_value, shape=shape)
-        return tf.Variable(initial, name=name)
-
     def _conv2d(self, input, w, stride, bias=None, use_batch_norm=False, name=""):
         output = tf.nn.conv2d(
             input,
@@ -163,86 +149,73 @@ class Dcscn(BaseNetwork):
             int((first - last) * (1 - pow(i / float(layers - 1), 1.0 / decay)) + last)
             for i in range(layers)
         ]
-        
+    
+    def feature_extraction_base(self, input, is_training):
+        filters = self.get_filters(self.filters, self.min_filters, self.layers, self.filters_decay_gamma)
+        outputs = []
 
-    def base(self, x, is_training):
-        tf.summary.image("input_image", x)
-
-        # building feature extraction layers
-        output_feature_num = self.filters
-        total_output_feature_num = 0
-        input_tensor = x
-        
-        input_shape = tf.shape(x)
-        height = input_shape[1]
-        width = input_shape[2]
-
-        x2 = tf.image.resize_images(
-            input_tensor,
-            (height * 2, width * 2),
-            method=tf.image.ResizeMethod.BICUBIC
-        )
-
-        tf.summary.image("input_bicubic_image", x2)
-
-        feature_extraction_outputs = []
-        for i, filters in enumerate(self.get_filters(self.filters, self.min_filters, self.layers, self.filters_decay_gamma)):
+        # Feature extraction layer
+        for i, filter_num in enumerate(filters):
             output = self._convolutional_block(
                 "CNN{}".format(i + 1),
-                input_tensor,
+                input,
                 kernel_size=3,
-                output_feature_num=filters,
+                output_feature_num=filter_num,
                 use_batch_norm=self.batch_norm,
                 dropout_rate=self.dropout_rate,
                 is_training=is_training
             )
-            feature_extraction_outputs.append(output)
-            input_tensor = output
-            total_output_feature_num += filters
+            outputs.append(output)
+            input = output
         
         with tf.variable_scope("Concat"):
-            feature_extraction_output = tf.concat(feature_extraction_outputs, 3, name="H_concat")
+            network_output = tf.concat(outputs, 3, name="H_concat")
+        
+        return network_output
+    
+    def reconstruction_base(self, input, is_training):
+        # Reconstruction layer
+        a_filters = 64
+        b_filters = 32
 
-        # building reconstruction layers
-        recon_a1_output = self._convolutional_block(
+        a1_output = self._convolutional_block(
             "A1",
-            feature_extraction_output,
+            input,
             kernel_size=1,
-            output_feature_num=64,
+            output_feature_num=a_filters,
             dropout_rate=self.dropout_rate,
             is_training=is_training
         )
-        recon_b1_output = self._convolutional_block(
+        b1_output = self._convolutional_block(
             "B1",
-            feature_extraction_output,
+            input,
             kernel_size=1,
-            output_feature_num=32,
+            output_feature_num=b_filters,
             dropout_rate=self.dropout_rate,
             is_training=is_training
         )
-        recon_b2_output = self._convolutional_block(
+        b2_output = self._convolutional_block(
             "B2",
-            recon_b1_output,
+            b1_output,
             kernel_size=3,
-            output_feature_num=32,
+            output_feature_num=b_filters,
             dropout_rate=self.dropout_rate,
             is_training=is_training
         )
-        recon_output = tf.concat([recon_b2_output, recon_a1_output], 3, name="Concat2")
+        recon_output = tf.concat([b2_output, a1_output], 3, name="Concat2")
 
-        # building upsampling layer
-        pixel_shuffler_channel = 64 + 32
+        # Upsampling layer
         upsample_output = self._pixel_shuffler(
             "Up-PS",
             recon_output,
             kernel_size=3,
             scale=self.scale,
-            output_feature_num=pixel_shuffler_channel,
+            output_feature_num=a_filters + b_filters,
             is_training=is_training
         )
         upsample_output = tf.depth_to_space(upsample_output, self.scale)
 
-        output = self._convolutional_block(
+        network_output = self._convolutional_block(
             "R-CNN0",
             upsample_output,
             kernel_size=3,
@@ -250,16 +223,28 @@ class Dcscn(BaseNetwork):
             is_training=is_training
         )
 
-        y_hat = tf.add(output, x2, name="output")
+        return network_output
 
-        # with tf.name_scope("Y_"):
-        #     mean = tf.reduce_mean(y_hat)
-        #     stddev = tf.sqrt(tf.reduce_mean(tf.square(y_hat - mean)))
-        #     tf.summary.scalar("output/mean", mean)
-        #     tf.summary.scalar("output/stddev", stddev)
-        #     tf.summary.histogram("output", y_hat)
 
-        # tf.summary.image("output_image", y_hat)
+    def base(self, x, is_training):
+        tf.summary.image("input_image", x)
+
+        shape_of_x = tf.shape(x)
+        height = shape_of_x[1]
+        width = shape_of_x[2]
+
+        x2 = tf.image.resize_images(
+            x,
+            (height * 2, width * 2),
+            method=tf.image.ResizeMethod.BICUBIC
+        )
+
+        tf.summary.image("input_bicubic_image", x2)
+
+        feature_extraction_output = self.feature_extraction_base(x, is_training)
+        reconstruction_output = self.reconstruction_base(feature_extraction_output, is_training)
+
+        y_hat = tf.add(reconstruction_output, x2, name="output")
 
         return y_hat
 
@@ -276,16 +261,16 @@ class Dcscn(BaseNetwork):
         with tf.name_scope("loss"):
             diff = tf.subtract(output, y_placeholder, "diff")
 
-            self.mse = tf.reduce_mean(tf.square(diff, name="diff_square"), name="mse")
-            self.image_loss = tf.identity(self.mse, name="image_loss")
+            mse = tf.reduce_mean(tf.square(diff, name="diff_square"), name="mse")
+            loss = tf.identity(mse, name="image_loss")
 
             weight_decay_loss = tf.losses.get_regularization_loss()
-            self.loss = self.image_loss + weight_decay_loss
+            loss = loss + weight_decay_loss
 
-            tf.summary.scalar("loss", self.loss)
+            tf.summary.scalar("loss", loss)
             tf.summary.scalar("weight_decay", weight_decay_loss)
 
-            return self.loss
+            return loss
 
     def summary(self, output, labels):
         tf.summary.image("output_image", output)
