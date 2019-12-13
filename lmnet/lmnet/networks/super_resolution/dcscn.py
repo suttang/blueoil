@@ -251,10 +251,9 @@ class Dcscn(BaseNetwork):
         y_hat = self.base(x_placeholder, is_training=is_training)
         # output = self.post_process(x_placeholder, y_hat)
 
-        self.output = tf.identity(y_hat, name="output")
-        # self.output = tf.identity(output, name="output")
+        output = tf.identity(y_hat, name="output")
 
-        return self.output
+        return output
 
     def loss(self, output, y_placeholder):
         with tf.name_scope("loss"):

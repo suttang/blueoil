@@ -116,7 +116,7 @@ def _run(input_dir, output_dir, config, restore_path, save_images):
         outputs = sess.run(output_op, feed_dict=feed_dict)
 
         if config.POST_PROCESSOR:
-            outputs = config.POST_PROCESSOR(outputs=outputs)["outputs"]
+            outputs = config.POST_PROCESSOR(outputs=outputs, raw_images=raw_images)["outputs"]
 
         results.append(outputs)
 

@@ -23,6 +23,7 @@ from lmnet.datasets.div2k import Div2kSuperResolution
 from lmnet.data_processor import Sequence
 
 from lmnet.pre_processor import Scale
+from lmnet.post_processor import ConvertYAndCbcrToRgb
 from lmnet.data_augmentor import Crop, RgbToY
 
 IS_DEBUG = False
@@ -39,7 +40,7 @@ DATA_FORMAT = "NHWC"
 TASK = Tasks.SUPER_RESOLUTION
 CLASSES = []
 
-MAX_EPOCHS = 50
+MAX_EPOCHS = 1
 SAVE_CHECKPOINT_STEPS = 1000
 KEEP_CHECKPOINT_MAX = 5
 TEST_STEPS = 1000
@@ -54,10 +55,11 @@ PRETRAIN_FILE = ""
 
 # PRE_PROCESSOR = None
 PRE_PROCESSOR = Sequence([
-    Scale(1/SCALE),
     RgbToY(with_keys=('image', 'mask')),
 ])
-POST_PROCESSOR = None
+POST_PROCESSOR = Sequence([
+    ConvertYAndCbcrToRgb(scale=SCALE)
+])
 
 NETWORK = EasyDict()
 
@@ -92,4 +94,5 @@ DATASET.DATA_FORMAT = DATA_FORMAT
 DATASET.PRE_PROCESSOR = PRE_PROCESSOR
 DATASET.AUGMENTOR = Sequence([
     Crop(size=CROP_SIZE * SCALE),
+    Scale(1/SCALE),
 ])

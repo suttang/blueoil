@@ -139,6 +139,10 @@ class JsonOutput():
             results.append(result_per_batch)
 
         return results
+    
+    def _super_resolution(self, output, raw_images, image_files):
+        results = []
+        return results
 
     def __call__(self, outputs, raw_images, image_files):
         """Output predictions json object from post processed tensor(np.ndarray).
@@ -171,6 +175,10 @@ class JsonOutput():
         if self.task == Tasks.SEMANTIC_SEGMENTATION:
 
             results = self._semantic_segmentation(outputs, raw_images, image_files)
+        
+        if self.task == Tasks.SUPER_RESOLUTION:
+
+            results = self._super_resolution(outputs, raw_images, image_files)
 
         result_json["results"] = results
         result_json = json.dumps(result_json, indent=4, sort_keys=True)

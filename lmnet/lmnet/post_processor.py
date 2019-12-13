@@ -20,11 +20,45 @@ import numpy as np
 from lmnet.data_augmentor import iou
 from lmnet.data_processor import Processor
 from lmnet.utils.box import format_cxcywh_to_xywh
+from lmnet.utils.image import scale, convert_rgb_to_rcbcr, convert_y_and_cbcr_to_rgb
 
 
 def _softmax(x):
     exp = np.exp(x - np.max(x))
     return exp / np.expand_dims(exp.sum(axis=-1), -1)
+
+
+class ConvertYAndCbcrToRgb(Processor):
+    """Convert
+
+    """
+    def __init__(self, scale):
+        """[summary]
+        
+        Args:
+            scale ([type]): [description]
+        """
+        self.scale = scale
+
+    def __call__(self, outputs, raw_images, **kwargs):
+        """[summary]
+        
+        Args:
+            outputs ([type]): [description]
+            raw_images ([type]): [description]
+        
+        Returns:
+            [type]: [description]
+        """
+        print("aiueohogehoge")
+        results = []
+        for i, raw_image in enumerate(raw_images):
+            scaled_image = scale(raw_image, self.scale)
+            scaled_ycncr_image = convert_rgb_to_rcbcr(scaled_image)
+            result = convert_y_and_cbcr_to_rgb(outputs[i], scaled_ycncr_image[:, :, 1:3])
+            results.append(result)
+
+        return dict({"outputs": results}, **kwargs)
 
 
 class FormatYoloV2(Processor):

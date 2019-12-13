@@ -812,7 +812,7 @@ class RgbToY(data_processor.Processor):
         xform = np.array([[65.738 / 256.0, 129.057 / 256.0, 25.064 / 256.0]])
 
         if self.with_keys is not None:
-            additionals = {v: kwargs[v].dot(xform.T) + 16 for v in self.with_keys}
+            additionals = {v: kwargs[v].dot(xform.T) + 16 for v in self.with_keys if v in kwargs}
         else:
             additionals = {}
 
