@@ -140,8 +140,11 @@ class JsonOutput():
 
         return results
     
-    def _super_resolution(self, output, raw_images, image_files):
+    def _super_resolution(self, outputs, raw_images, image_files):
         results = []
+        for output in outputs:
+            results.append({})
+
         return results
 
     def __call__(self, outputs, raw_images, image_files):
@@ -289,9 +292,23 @@ class ImageFromJson():
 
         return filename_images
 
-    def __call__(self, json_results, raw_images, image_files):
-        outputs = json.loads(json_results)
-        results = outputs["results"]
+    def _super_resolution(self, outputs, raw_images, image_files):
+        filename_images = []
+
+        for i, (output, raw_image, image_file) in enumerate(zip(outputs, raw_images, image_files)):
+            base, _ = os.path.splitext(os.path.basename(image_file))
+            file_name = "{}.png".format(base)
+
+            output = output.round().clip(0, 200).astype(np.uint8)
+            output_image = PIL.Image.fromarray(output)
+            filename_images.append((file_name, output_image))
+            
+        return filename_images
+
+
+    def __call__(self, outputs, json_results, raw_images, image_files):
+        json_outputs = json.loads(json_results)
+        results = json_outputs["results"]
         assert len(results) == len(raw_images) == len(image_files)
 
         if self.task == Tasks.CLASSIFICATION:
@@ -302,5 +319,8 @@ class ImageFromJson():
 
         if self.task == Tasks.OBJECT_DETECTION:
             filename_images = self._object_detection(json_results, raw_images, image_files)
+        
+        if self.task == Tasks.SUPER_RESOLUTION:
+            filename_images = self._super_resolution(outputs, raw_images, image_files)
 
         return filename_images

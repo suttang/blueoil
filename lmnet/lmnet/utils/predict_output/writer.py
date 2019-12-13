@@ -32,7 +32,7 @@ class OutputWriter():
         save_json(dest, json, step)
 
         if save_material:
-            materials = self.image_from_json(json, raw_images, image_files)
+            materials = self.image_from_json(outputs, json, raw_images, image_files)
             save_materials(dest, materials, step)
 
 
