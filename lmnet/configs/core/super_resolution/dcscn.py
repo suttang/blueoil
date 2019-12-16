@@ -24,7 +24,7 @@ from lmnet.data_processor import Sequence
 
 from lmnet.pre_processor import Scale
 from lmnet.post_processor import ConvertYAndCbcrToRgb
-from lmnet.data_augmentor import Crop, RgbToY
+from lmnet.data_augmentor import Crop, RgbToYcbcr
 
 IS_DEBUG = False
 
@@ -55,7 +55,7 @@ PRETRAIN_FILE = ""
 
 # PRE_PROCESSOR = None
 PRE_PROCESSOR = Sequence([
-    RgbToY(with_keys=('image', 'mask')),
+    RgbToYcbcr(with_keys=('image', 'mask')),
 ])
 POST_PROCESSOR = Sequence([
     ConvertYAndCbcrToRgb(scale=SCALE)

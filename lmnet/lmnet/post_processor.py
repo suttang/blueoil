@@ -20,7 +20,7 @@ import numpy as np
 from lmnet.data_augmentor import iou
 from lmnet.data_processor import Processor
 from lmnet.utils.box import format_cxcywh_to_xywh
-from lmnet.utils.image import scale, convert_rgb_to_rcbcr, convert_y_and_cbcr_to_rgb
+from lmnet.utils.image import scale, convert_rgb_to_ycbcr, convert_y_and_cbcr_to_rgb
 
 
 def _softmax(x):
@@ -54,7 +54,7 @@ class ConvertYAndCbcrToRgb(Processor):
         results = []
         for i, raw_image in enumerate(raw_images):
             scaled_image = scale(raw_image, self.scale)
-            scaled_ycncr_image = convert_rgb_to_rcbcr(scaled_image)
+            scaled_ycncr_image = convert_rgb_to_ycbcr(scaled_image)
             result = convert_y_and_cbcr_to_rgb(outputs[i], scaled_ycncr_image[:, :, 1:3])
             results.append(result)
 

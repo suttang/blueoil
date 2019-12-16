@@ -56,7 +56,7 @@ def scale(image, scale, method=PIL.Image.BICUBIC):
     return image
 
 
-def convert_rgb_to_rcbcr(image):
+def convert_rgb_to_ycbcr(image):
     if len(image.shape) < 2 or image.shape[2] == 1:
         return image
 

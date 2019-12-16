@@ -23,6 +23,7 @@ from PIL import Image, ImageEnhance, ImageFilter
 
 from lmnet import data_processor, pre_processor
 from lmnet.utils.box import fill_dummy_boxes, crop_boxes, iou
+from lmnet.utils.image import convert_rgb_to_ycbcr
 
 
 class Blur(data_processor.Processor):
@@ -813,6 +814,19 @@ class RgbToY(data_processor.Processor):
 
         if self.with_keys is not None:
             additionals = {v: kwargs[v].dot(xform.T) + 16 for v in self.with_keys if v in kwargs}
+        else:
+            additionals = {}
+
+        return dict({**kwargs, **additionals})
+
+class RgbToYcbcr(data_processor.Processor):
+
+    def __init__(self, with_keys=None):
+        self.with_keys = with_keys
+
+    def __call__(self, **kwargs):
+        if self.with_keys is not None:
+            additionals = {v: convert_rgb_to_ycbcr(kwargs[v]) for v in self.with_keys if v in kwargs}
         else:
             additionals = {}
 
