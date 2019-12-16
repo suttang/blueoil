@@ -24,9 +24,9 @@ from lmnet.datasets.{{dataset_module}} import {{dataset_class}}
 ){% endif %}
 from lmnet.data_processor import Sequence
 
-from lmnet.pre_processor import (
-    PerImageStandardization,
-)
+from lmnet.pre_processor import Scale
+from lmnet.post_processor import ConvertYAndCbcrToRgb
+from lmnet.data_augmentor import Crop, RgbToY
 
 IS_DEBUG = False
 
@@ -34,11 +34,14 @@ NETWORK_CLASS = {{network_class}}
 
 DATASET_CLASS = type('DATASET_CLASS', ({{dataset_class}},), {{dataset_class_property}})
 
+SCALE = 2
+CROP_SIZE = 48
+
 IMAGE_SIZE = {{image_size}}
 BATCH_SIZE = {{batch_size}}
 DATA_FORMAT = "NHWC"
 TASK = Tasks.SUPER_RESOLUTION
-CLASSES = {{classes}}
+CLASSES = []
 
 MAX_EPOCHS = {{max_epochs}}
 SAVE_CHECKPOINT_STEPS = {{save_checkpoint_steps}}
@@ -53,11 +56,12 @@ PRETRAIN_VARS = []
 PRETRAIN_DIR = ""
 PRETRAIN_FILE = ""
 
-# PRE_PROCESSOR = None
 PRE_PROCESSOR = Sequence([
-    PerImageStandardization(),
+    RgbToY(with_keys=('image', 'mask')),
 ])
-POST_PROCESSOR = None
+POST_PROCESSOR = Sequence([
+    ConvertYAndCbcrToRgb(scale=SCALE)
+])
 
 NETWORK = EasyDict()
 
@@ -69,12 +73,28 @@ NETWORK.LEARNING_RATE_KWARGS = {{learning_rate_kwargs}}
 NETWORK.IMAGE_SIZE = IMAGE_SIZE
 NETWORK.BATCH_SIZE = BATCH_SIZE
 NETWORK.DATA_FORMAT = DATA_FORMAT
-NETWORK.WEIGHT_DECAY_RATE = 0.0005
+NETWORK.WEIGHT_DECAY_RATE = 0.00003
+
+NETWORK.INPUT_CHANNEL = 1
+NETWORK.OUTPUT_CHANNEL = 1
+
+# Scale factor for Super Resolution (should be 2 or more)
+NETWORK.SCALE = SCALE
+# Number of feature extraction layers
+NETWORK.FEATURE_EXTRACTION_LAYERS = 12
+# Number of filters of first feature-extraction CNNs
+NETWORK.FIRST_FEATURE_EXTRACTION_LAYER_FILTERS = 196
+# Number of filters of last feature-extraction CNNs
+NETWORK.LAST_FEATURE_EXTRACTION_LAYER_FILTERS = 48
+# Number of CNN filters are decayed from [first] to [last] by this gamma
+NETWORK.FILTERS_DECAY_GAMMA = 1.5
 
 DATASET = EasyDict()
+DATASET.SCALE = SCALE
 DATASET.BATCH_SIZE = BATCH_SIZE
 DATASET.DATA_FORMAT = DATA_FORMAT
 DATASET.PRE_PROCESSOR = PRE_PROCESSOR
-DATASET.AUGMENTOR = Sequence([{% if data_augmentation %}{% for augmentor in data_augmentation %}
-    {{ augmentor[0] }}({% for d_name, d_value in augmentor[1] %}{{ d_name }}={{ d_value }}, {% endfor %}),{% endfor %}
-{% endif %}])
+DATASET.AUGMENTOR = Sequence([
+    Crop(size=CROP_SIZE * SCALE),
+    Scale(1/SCALE),
+])

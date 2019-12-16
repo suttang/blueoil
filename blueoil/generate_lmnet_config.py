@@ -60,7 +60,7 @@ _NETWORK_NAME_NETWORK_MODULE_CLASS = {
     },
     "DcscnQuantize": {
         "network_module": "dcscn",
-        "network_class": "Dcscn",
+        "network_class": "DcscnQuantize",
     },
 }
 
@@ -328,7 +328,7 @@ def _save(lmnet_config):
     tpl = env.get_template(template_file)
 
     applied = tpl.render(lmnet_config)
-    import pdb; pdb.set_trace()
+
     with NamedTemporaryFile(
             prefix="blueoil_config_{}".format(lmnet_config['model_name']),
             suffix=".py", delete=False, mode="w") as fp:

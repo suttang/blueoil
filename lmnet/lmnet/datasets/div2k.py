@@ -58,9 +58,8 @@ class Div2kSuperResolution(SuperResolutionBase):
     extend_dir = Div2k.extend_dir
     available_subsets = Div2k.available_subsets
 
-    def __init__(self, scale, **kwargs):
+    def __init__(self, **kwargs):
         self.dataset = Div2k(**kwargs)
-        self.scale = scale
 
         self.subset = self.dataset.subset
         self.batch_size = self.dataset.batch_size

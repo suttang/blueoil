@@ -28,7 +28,8 @@ from lmnet.data_processor import Processor
 task_type_choices = [
     'classification',
     'object_detection',
-    'semantic_segmentation'
+    'semantic_segmentation',
+    'super_resolution',
 ]
 
 classification_network_definitions = [
@@ -56,6 +57,17 @@ semantic_segmentation_network_definitions = [
     },
 ]
 
+super_resolution_network_definitions = [
+    {
+        'name': 'Dcscn',
+        'desc': 'Dcscn super resolution.'
+    },
+    {
+        'name': 'DcscnQuantize',
+        'desc': 'Quantized Dcscn super resolution.'
+    },
+]
+
 IMAGE_SIZE_VALIDATION = {
     "LmnetV1Quantize": {
         "max_size": 512,
@@ -72,7 +84,7 @@ IMAGE_SIZE_VALIDATION = {
     "LmSegnetV1Quantize": {
         "max_size": 512,
         "divider": 8,
-    },
+    }
 }
 
 classification_dataset_formats = [
@@ -104,6 +116,13 @@ semantic_segmentation_dataset_formats = [
     },
 ]
 
+super_resolution_dataset_formats = [
+    {
+        'name': 'Div2k',
+        'desk': 'Div2k compatible'
+    }
+]
+
 
 learning_rate_schedule_map = OrderedDict([
     ("constant", "'constant' -> constant learning rate."),
@@ -120,6 +139,8 @@ def network_name_choices(task_type):
         return [definition['name'] for definition in object_detection_network_definitions]
     elif task_type == 'semantic_segmentation':
         return [definition['name'] for definition in semantic_segmentation_network_definitions]
+    elif task_type == 'super_resolution':
+        return [definition['name'] for definition in super_resolution_network_definitions]
 
 
 def dataset_format_choices(task_type):
@@ -129,6 +150,8 @@ def dataset_format_choices(task_type):
         return [definition['name'] for definition in object_detection_dataset_formats]
     elif task_type == 'semantic_segmentation':
         return [definition['name'] for definition in semantic_segmentation_dataset_formats]
+    elif task_type == 'super_resolution':
+        return [definition['name'] for definition in super_resolution_dataset_formats]
 
 
 def default_batch_size(task_type):
@@ -138,6 +161,8 @@ def default_batch_size(task_type):
         return '16'
     elif task_type == 'semantic_segmentation':
         return '8'
+    elif task_type == 'super_resolution':
+        return '1'
 
 
 def prompt(question):
@@ -280,15 +305,18 @@ def ask_questions():
     }
     batch_size = prompt(batch_size_question)
 
-    image_size_question = {
-        'type': 'input',
-        'name': 'value',
-        'message': 'image size (integer x integer):',
-        'default': '128x128',
-        'filter': image_size_filter,
-        'validate': generate_image_size_validate(network_name),
-    }
-    image_size = prompt(image_size_question)
+    if task_type == 'super_resolution':
+        image_size = None
+    else:
+        image_size_question = {
+            'type': 'input',
+            'name': 'value',
+            'message': 'image size (integer x integer):',
+            'default': '128x128',
+            'filter': image_size_filter,
+            'validate': generate_image_size_validate(network_name),
+        }
+        image_size = prompt(image_size_question)
 
     training_epochs_question = {
         'type': 'input',
