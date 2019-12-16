@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================
-import math
+import functools
 
 import tensorflow as tf
 
@@ -53,6 +53,8 @@ class Dcscn(BaseNetwork):
         # Use batch normalization after each CNNs
         self.batch_norm = False
 
+        self.custom_getter = None
+
     def _conv2d(self, input, w, stride, bias=None, use_batch_norm=False, name=""):
         output = tf.nn.conv2d(
             input,
@@ -91,7 +93,7 @@ class Dcscn(BaseNetwork):
         use_batch_norm=False,
         dropout_rate=1.0,
     ):
-        with tf.variable_scope(name):
+        with tf.variable_scope(name, custom_getter=self.custom_getter):
             a = tf.layers.conv2d(
                 inputs=input,
                 filters=filters,
@@ -323,3 +325,43 @@ class Dcscn(BaseNetwork):
             updates_op = tf.group(*updates)
 
             return results, updates_op
+
+
+class DcscnQuantize(Dcscn):
+    def __init__(
+            self,
+            activation_quantizer=None,
+            activation_quantizer_kwargs=None,
+            weight_quantizer=None,
+            weight_quantizer_kwargs=None,
+            *args,
+            **kwargs
+    ):
+        super().__init__(
+            *args,
+            **kwargs
+        )
+
+        assert weight_quantizer
+        assert activation_quantizer
+
+        activation_quantizer_kwargs = activation_quantizer_kwargs if activation_quantizer_kwargs is not None else {}
+        weight_quantizer_kwargs = weight_quantizer_kwargs if weight_quantizer_kwargs is not None else {}
+
+        self.activation = activation_quantizer(**activation_quantizer_kwargs)
+        weight_quantization = weight_quantizer(**weight_quantizer_kwargs)
+        self.custom_getter = functools.partial(
+            self._quantized_variable_getter,
+            weight_quantization=weight_quantization
+        )
+
+    @staticmethod
+    def _quantized_variable_getter(getter, name, weight_quantization=None, *args, **kwargs):
+        assert callable(weight_quantization)
+        var = getter(name, *args, **kwargs)
+        with tf.compat.v1.variable_scope(name):
+            print(var.op.name.split("/")[-1])
+            # import pdb; pdb.set_trace()
+            if "kernel" == var.op.name.split("/")[-1]:
+                return weight_quantization(var)
+        return var
