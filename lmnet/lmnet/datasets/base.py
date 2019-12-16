@@ -41,6 +41,7 @@ class Base(metaclass=ABCMeta):
         self.pre_processor = pre_processor
         self.data_format = data_format
         self.seed = seed or 0
+        self.augment_subset = ["train"]
 
     @property
     def data_dir(self):

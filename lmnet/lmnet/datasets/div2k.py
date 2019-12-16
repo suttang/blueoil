@@ -67,6 +67,7 @@ class Div2kSuperResolution(SuperResolutionBase):
         self.pre_processor = self.dataset.pre_processor
         self.data_format = self.dataset.data_format
         self.seed = self.dataset.seed
+        self.augment_subset = ["train", "validation"]
 
     @property
     def files(self):
