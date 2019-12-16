@@ -97,7 +97,6 @@ _DATASET_FORMAT_DATASET_MODULE_CLASS = {
     "DIV2K": {
         "dataset_module": "div2k",
         "dataset_class": "Div2kSuperResolution",
-        "dataset_class": "Div2k",
     }
 }
 
