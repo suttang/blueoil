@@ -360,8 +360,6 @@ class DcscnQuantize(Dcscn):
         assert callable(weight_quantization)
         var = getter(name, *args, **kwargs)
         with tf.compat.v1.variable_scope(name):
-            print(var.op.name.split("/")[-1])
-            # import pdb; pdb.set_trace()
             if "kernel" == var.op.name.split("/")[-1]:
                 return weight_quantization(var)
         return var
