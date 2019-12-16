@@ -25,6 +25,7 @@ import PIL.ImageDraw
 from matplotlib import cm
 
 from lmnet.common import Tasks
+from lmnet.visualize import visualize_keypoint_detection
 
 
 class JsonOutput():
@@ -147,6 +148,24 @@ class JsonOutput():
 
         return results
 
+    def _keypoint_detection(self, outputs, raw_images, image_files):
+        results = []
+        for output, raw_image, image_file in zip(outputs, raw_images, image_files):
+            height_scale = raw_image.shape[0] / self.image_size[0]
+            width_scale = raw_image.shape[1] / self.image_size[1]
+            if self.data_format == "NCHW":
+                output = np.transpose(output, [1, 2, 0])
+            joints = output.copy()
+            joints[:, 0] *= width_scale
+            joints[:, 1] *= height_scale
+            joints_list = [int(joints[i, j]) for j in range(3) for i in range(joints.shape[0])]
+            result_per_batch = {
+                "file_path": image_file,
+                "prediction": {"joints": joints_list}
+            }
+            results.append(result_per_batch)
+        return results
+
     def __call__(self, outputs, raw_images, image_files):
         """Output predictions json object from post processed tensor(np.ndarray).
 
@@ -182,6 +201,10 @@ class JsonOutput():
         if self.task == Tasks.SUPER_RESOLUTION:
 
             results = self._super_resolution(outputs, raw_images, image_files)
+
+        if self.task == Tasks.KEYPOINT_DETECTION:
+
+            results = self._keypoint_detection(outputs, raw_images, image_files)
 
         result_json["results"] = results
         result_json = json.dumps(result_json, indent=4, sort_keys=True)
@@ -292,6 +315,26 @@ class ImageFromJson():
 
         return filename_images
 
+    def _keypoint_detection(self, result_json, raw_images, image_files):
+        outputs = json.loads(result_json)
+        results = outputs["results"]
+        filename_images = []
+
+        for i, (result, raw_image, image_file) in enumerate(zip(results, raw_images, image_files)):
+            base, _ = os.path.splitext(os.path.basename(image_file))
+            file_name = "{}.png".format(base)
+            joints_list = result["prediction"]["joints"]
+            number_joints = len(joints_list) // 3
+            joints = np.zeros(shape=(number_joints, 3), dtype=np.float)
+            for j in range(number_joints):
+                joints[j, 0] = joints_list[j * 3]
+                joints[j, 1] = joints_list[j * 3 + 1]
+                joints[j, 2] = joints_list[j * 3 + 2]
+            image = visualize_keypoint_detection(raw_image, joints)
+            filename_images.append((file_name, PIL.Image.fromarray(image)))
+
+        return filename_images
+
     def _super_resolution(self, outputs, raw_images, image_files):
         filename_images = []
 
@@ -305,10 +348,9 @@ class ImageFromJson():
             
         return filename_images
 
-
-    def __call__(self, outputs, json_results, raw_images, image_files):
-        json_outputs = json.loads(json_results)
-        results = json_outputs["results"]
+    def __call__(self, json_results, raw_images, image_files):
+        outputs = json.loads(json_results)
+        results = outputs["results"]
         assert len(results) == len(raw_images) == len(image_files)
 
         if self.task == Tasks.CLASSIFICATION:
@@ -322,5 +364,8 @@ class ImageFromJson():
         
         if self.task == Tasks.SUPER_RESOLUTION:
             filename_images = self._super_resolution(outputs, raw_images, image_files)
+
+        if self.task == Tasks.KEYPOINT_DETECTION:
+            filename_images = self._keypoint_detection(json_results, raw_images, image_files)
 
         return filename_images

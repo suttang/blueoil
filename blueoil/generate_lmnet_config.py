@@ -30,7 +30,8 @@ _TASK_TYPE_TEMPLATE_FILE = {
     "classification": "classification.tpl.py",
     "object_detection": "object_detection.tpl.py",
     "semantic_segmentation": "semantic_segmentation.tpl.py",
-    "super_resolution": "super_resolution.tpl.py",
+    "keypoint_detection": "keypoint_detection.tpl.py",
+    "super_resolution": "super_resolution.tpl.py"
 }
 
 _NETWORK_NAME_NETWORK_MODULE_CLASS = {
@@ -54,6 +55,10 @@ _NETWORK_NAME_NETWORK_MODULE_CLASS = {
         "network_module": "lm_segnet_v1",
         "network_class": "LmSegnetV1Quantize",
     },
+    "LmSinglePoseV1Quantize": {
+        "network_module": "lm_single_pose_v1",
+        "network_class": "LmSinglePoseV1Quantize",
+    },
     "Dcscn": {
         "network_module": "dcscn",
         "network_class": "Dcscn",
@@ -61,7 +66,7 @@ _NETWORK_NAME_NETWORK_MODULE_CLASS = {
     "DcscnQuantize": {
         "network_module": "dcscn",
         "network_class": "DcscnQuantize",
-    },
+    }
 }
 
 _DATASET_FORMAT_DATASET_MODULE_CLASS = {
@@ -85,9 +90,14 @@ _DATASET_FORMAT_DATASET_MODULE_CLASS = {
         "dataset_module": "camvid",
         "dataset_class": "CamvidCustom",
     },
+    "Mscoco for Single-Person Pose Estimation": {
+        "dataset_module": "mscoco_2017",
+        "dataset_class": "MscocoSinglePersonKeypoints",
+    },
     "DIV2K": {
         "dataset_module": "div2k",
         "dataset_class": "Div2kSuperResolution",
+        "dataset_class": "Div2k",
     }
 }
 
@@ -266,6 +276,7 @@ def _blueoil_to_lmnet(blueoil_config):
 
     # common
     image_size = blueoil_config["common"]["image_size"]
+    dataset_prefetch = blueoil_config["common"]["dataset_prefetch"]
 
     data_augmentation = []
     for augmentor in blueoil_config["common"].get("data_augmentation", []):
@@ -307,7 +318,8 @@ def _blueoil_to_lmnet(blueoil_config):
         "quantize_first_convolution": quantize_first_convolution,
 
         "dataset": dataset,
-        "data_augmentation": data_augmentation
+        "data_augmentation": data_augmentation,
+        "dataset_prefetch": dataset_prefetch
     }
 
     # merge dict
