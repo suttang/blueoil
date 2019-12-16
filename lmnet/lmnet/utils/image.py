@@ -1,3 +1,5 @@
+import random
+
 import numpy as np
 import PIL.Image
 
@@ -15,6 +17,18 @@ def load_image(filename, convert_rgb=True):
     image = np.array(image)
 
     return image
+
+
+def crop(image, patch_size):
+    height, width = image.shape[0:2]
+
+    top = random.randint(0, height - patch_size)
+    left = random.randint(0, width - patch_size)
+
+    if np.ndim(image) == 2:
+        return image[top:top + patch_size, left:left + patch_size]
+
+    return image[top:top + patch_size, left:left + patch_size, :]
 
 
 def scale(image, scale, method=PIL.Image.BICUBIC):

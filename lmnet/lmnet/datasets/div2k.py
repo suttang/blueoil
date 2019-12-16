@@ -15,17 +15,18 @@
 # =============================================================================
 import functools
 import os
+import random
 from glob import glob
 
 from lmnet.datasets.base import Base
 from lmnet.datasets.base import SuperResolutionBase
-from lmnet.utils.image import load_image
+from lmnet.utils.image import crop, load_image, scale
 
 
 class Div2k(Base):
     classes = []
     num_classes = 0
-    extend_dir = "DIV2K"
+    extend_dir = "DIV2K_light"
     available_subsets = ["train", "validation"]
 
     @property
@@ -58,8 +59,11 @@ class Div2kSuperResolution(SuperResolutionBase):
     extend_dir = Div2k.extend_dir
     available_subsets = Div2k.available_subsets
 
-    def __init__(self, **kwargs):
+    def __init__(self, scale, patch_size, **kwargs):
         self.dataset = Div2k(**kwargs)
+
+        self.scale = scale
+        self.patch_size = patch_size
 
         self.subset = self.dataset.subset
         self.batch_size = self.dataset.batch_size
@@ -67,7 +71,6 @@ class Div2kSuperResolution(SuperResolutionBase):
         self.pre_processor = self.dataset.pre_processor
         self.data_format = self.dataset.data_format
         self.seed = self.dataset.seed
-        self.augment_subset = ["train", "validation"]
 
     @property
     def files(self):
@@ -79,7 +82,15 @@ class Div2kSuperResolution(SuperResolutionBase):
     
     def __getitem__(self, i):
         image, _ = self.dataset[i]
-        return image, image
+
+        if self.subset == "train":
+            cropped_image = crop(image, self.patch_size)
+            image = scale(cropped_image, 1 / self.scale)
+            label = cropped_image
+        elif self.subset == "validation":
+            label = image
+            image = scale(image, 1 / self.scale)
+        return image, label
     
     def __len__(self):
         return len(self.dataset)
