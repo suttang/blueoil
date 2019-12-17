@@ -295,7 +295,6 @@ class Dcscn(BaseNetwork):
         return np.array(resized_images, dtype=np.uint8)
 
     def summary(self, output, labels):
-        label_y = t
         tf.summary.image("output_image_Y", output)
         tf.summary.image("grand_truth_Y", tf.slice(labels, [0, 0, 0, 0], [1, -1, -1, 1]))
         tf.summary.image("bicubic_Y", tf.slice(
