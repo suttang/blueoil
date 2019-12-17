@@ -64,12 +64,11 @@ POST_PROCESSOR = Sequence([
 NETWORK = EasyDict()
 
 NETWORK.OPTIMIZER_CLASS = tf.train.AdamOptimizer
-NETWORK.OPTIMIZER_KWARGS = {'learning_rate': 0.002, 'beta1': 0.9, 'beta2': 0.999}
+NETWORK.OPTIMIZER_KWARGS = {'beta1': 0.9, 'beta2': 0.999}
 NETWORK.LEARNING_RATE_FUNC = tf.train.cosine_decay
 NETWORK.LEARNING_RATE_KWARGS = {
     "learning_rate": 0.002,
-    "global_step": 800 * 50,
-    "decay_steps": 1000,
+    "decay_steps": 50 * 800,
 }
 
 NETWORK.IMAGE_SIZE = IMAGE_SIZE
