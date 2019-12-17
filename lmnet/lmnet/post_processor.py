@@ -50,7 +50,6 @@ class ConvertYAndCbcrToRgb(Processor):
         Returns:
             [type]: [description]
         """
-        print("aiueohogehoge")
         results = []
         for i, raw_image in enumerate(raw_images):
             scaled_image = scale(raw_image, self.scale)
