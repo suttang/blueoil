@@ -57,7 +57,7 @@ def scale(image, scale, method=PIL.Image.BICUBIC):
 
 
 def convert_rgb_to_ycbcr(image):
-    if len(image.shape) < 2 or image.shape[2] == 1:
+    if image.ndim < 2 or image.shape[2] == 1:
         return image
 
     xform = np.array(
@@ -67,7 +67,6 @@ def convert_rgb_to_ycbcr(image):
             [112.439 / 256.0, -94.154 / 256.0, -18.285 / 256.0],
         ]
     )
-
     ycbcr_image = image.dot(xform.T)
     ycbcr_image[:, :, 0] += 16.0
     ycbcr_image[:, :, [1, 2]] += 128.0
@@ -75,11 +74,11 @@ def convert_rgb_to_ycbcr(image):
     return ycbcr_image
 
 
-def convert_ycbcr_to_rgb(ycbcr_image):
-    rgb_image = np.zeros([ycbcr_image.shape[0], ycbcr_image.shape[1], 3])
+def convert_ycbcr_to_rgb(image):
+    rgb_image = np.zeros([image.shape[0], image.shape[1], 3])
+    rgb_image[:, :, 0] = image[:, :, 0] - 16.0
+    rgb_image[:, :, [1, 2]] = image[:, :, [1, 2]] - 128.0
 
-    rgb_image[:, :, 0] = ycbcr_image[:, :, 0] - 16.0
-    rgb_image[:, :, [1, 2]] = ycbcr_image[:, :, [1, 2]] - 128.0
     xform = np.array(
         [
             [298.082 / 256.0, 0, 408.583 / 256.0],
@@ -87,9 +86,7 @@ def convert_ycbcr_to_rgb(ycbcr_image):
             [298.082 / 256.0, 516.412 / 256.0, 0],
         ]
     )
-    rgb_image = rgb_image.dot(xform.T)
-
-    return rgb_image
+    return rgb_image.dot(xform.T)
 
 
 def convert_y_and_cbcr_to_rgb(y_image, cbcr_image):

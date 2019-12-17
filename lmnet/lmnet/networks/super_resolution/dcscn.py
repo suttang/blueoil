@@ -20,7 +20,7 @@ import tensorflow as tf
 
 from lmnet.networks.base import BaseNetwork
 from lmnet.layers import conv2d
-from lmnet.utils.image import convert_ycbcr_to_rgb, convert_y_and_cbcr_to_rgb, scale
+from lmnet.utils.image import convert_ycbcr_to_rgb, convert_y_and_cbcr_to_rgb, convert_rgb_to_ycbcr
 
 
 class Dcscn(BaseNetwork):
@@ -137,12 +137,8 @@ class Dcscn(BaseNetwork):
             return output
 
     def placeholders(self):
-        x = tf.placeholder(
-            tf.float32, shape=[None, None, None, 3], name="x"
-        )
-        y = tf.placeholder(
-            tf.float32, shape=[None, None, None, 3], name="y"
-        )
+        x = tf.placeholder(tf.float32, shape=[None, None, None, 3], name="x")
+        y = tf.placeholder(tf.float32, shape=[None, None, None, 3], name="y")
         self.is_training = tf.placeholder(tf.bool, name="is_training")
 
         return x, y
@@ -229,6 +225,7 @@ class Dcscn(BaseNetwork):
 
 
     def base(self, x, is_training):
+        # tf.summary.image("input", x)
         shape_of_x = tf.shape(x)
         height = shape_of_x[1]
         width = shape_of_x[2]
@@ -273,91 +270,79 @@ class Dcscn(BaseNetwork):
     def _ycbcr_to_rgb(self, images):
         rgb_images = []
         for image in images:
-            rgb_images.append(convert_ycbcr_to_rgb(image))
-        return np.array(np.round(rgb_images), dtype=np.uint8)
-    
-    def _rgb_output(self, output, labels):
-        rgb_images = []
-        for image, label in zip(output, labels):
-            base_image = scale(scale(label, 1 / 2), 2)
-            rgb_image = convert_y_and_cbcr_to_rgb(image, base_image[:, :, 1:3])
-            rgb_image = rgb_image.round().clip(0, 200).astype(np.uint8)
-            rgb_images.append(rgb_image)
-        
-        return np.array(rgb_images, dtype=np.uint8)
-    
-    def _bicubic(self, images):
-        resized_images = []
-        for image in images:
-            image = scale(scale(image, 1 / 2), 2)
-            resized_images.append(image)
-        
-        return np.array(resized_images, dtype=np.uint8)
-
-    def summary(self, output, labels):
-        tf.summary.image("output_image_Y", output)
-        tf.summary.image("grand_truth_Y", tf.slice(labels, [0, 0, 0, 0], [1, -1, -1, 1]))
-        tf.summary.image("bicubic_Y", tf.slice(
-            tf.py_func(self._bicubic, [labels], tf.uint8), [0, 0, 0, 0], [1, -1, -1, 1]
-        ))
-
-        label_rgb = tf.py_func(self._ycbcr_to_rgb, [labels], tf.uint8)
-        tf.summary.image("output_image", tf.py_func(self._rgb_output, [output, labels], tf.uint8))
-        tf.summary.image("grand_truth", label_rgb)
-        tf.summary.image("bicubic", tf.py_func(self._bicubic, [label_rgb], tf.uint8))
-
-        return super().summary(output, labels)
+            image = convert_ycbcr_to_rgb(image)
+            # image.round().clip(0, 255)
+            rgb_images.append(image)
+        return np.array(np.round(rgb_images), dtype=np.float32)
         
     def _combine_y_and_cbcr_to_rgb(self, y_images, ycbcr_images):
-        if y_images.ndim != ycbcr_images.ndim:
-            raise Exception("The dimension of y_images and ycbcr_images must be the same.")
-        
         combined_images = []
         for y_image, ycbcr_image in zip(y_images, ycbcr_images):
             image = convert_y_and_cbcr_to_rgb(y_image, ycbcr_image[:, :, 1:3])
-            # TODO: この行いらないっぽい？
-            # image = image.round().clip(0, 200).astype(np.float32)
             combined_images.append(image)
         
         return np.array(combined_images, dtype=np.float32)
+
+    def summary(self, output, labels):
+        """[summary]
+        
+        Args:
+            output ([type]): [description]
+            labels (np.array): 4-D numpy array of YCbCr image
+        
+        Returns:
+            [type]: [description]
+        """
+        shape_of_bicubic_image = tf.shape(labels)
+        height = shape_of_bicubic_image[1]
+        width = shape_of_bicubic_image[2]
+
+        bicubic = tf.image.resize_images(labels, (height // 2, width // 2), tf.image.ResizeMethod.BICUBIC)
+        bicubic = tf.image.resize_images(bicubic, (height, width), tf.image.ResizeMethod.BICUBIC)
+
+        tf.summary.image("output_image_Y", tf.cast(tf.clip_by_value(output, 0, 255), tf.uint8))
+        tf.summary.image("grand_truth_Y", tf.cast(tf.clip_by_value(tf.slice(labels, [0, 0, 0, 0], [1, -1, -1, 1]), 0, 255), tf.uint8))
+        tf.summary.image("bicubic_Y", tf.cast(tf.clip_by_value(tf.slice(bicubic, [0, 0, 0, 0], [1, -1, -1, 1]), 0, 255), tf.uint8))
+
+        tf.summary.image("output_image", tf.cast(tf.clip_by_value(tf.py_func(self._combine_y_and_cbcr_to_rgb, [output, bicubic], tf.float32), 0, 255), tf.uint8))
+        tf.summary.image("grand_truth", tf.cast(tf.clip_by_value(tf.py_func(self._ycbcr_to_rgb, [labels], tf.float32), 0, 255), tf.uint8))
+        tf.summary.image("bicubic", tf.cast(tf.clip_by_value(tf.py_func(self._ycbcr_to_rgb, [bicubic], tf.float32), 0, 255), tf.uint8))
+
+        return super().summary(output, labels)
     
     def metrics(self, output, labels):
-        # Make grand truth image
-        rgb_labels = tf.py_func(convert_ycbcr_to_rgb, [labels], tf.float32)
+        # Make RGB grand truth image
+        gt_images = tf.py_func(self._ycbcr_to_rgb, [labels], tf.float32)
 
         # Make RGB image from output
         size = tf.shape(labels)
         height = size[1]
         width = size[2]
 
-        base_images = tf.image.resize_images(
-            labels,
-            (height // 2, width // 2),
-            method=tf.image.ResizeMethod.BICUBIC
-        )
-        base_images = tf.image.resize_images(
-            base_images,
-            (height, width),
-            method=tf.image.ResizeMethod.BICUBIC
-        )
-        rgb_output = tf.py_func(self._combine_y_and_cbcr_to_rgb, [output, base_images], tf.float32)
+        base = tf.image.resize_images(labels, (height // 2, width // 2), tf.image.ResizeMethod.BICUBIC)
+        base = tf.image.resize_images(base, (height, width), tf.image.ResizeMethod.BICUBIC)
+        rgb_output = tf.py_func(self._combine_y_and_cbcr_to_rgb, [output, base], tf.float32)
+
+        # tf.summary.image("metrics/label", tf.cast(tf.clip_by_value(gt_images, 0, 255), tf.uint8))
+        # tf.summary.image("metrics/output", tf.cast(tf.clip_by_value(rgb_output, 0, 255), tf.uint8))
  
+        # Calc metrics
         results = {}
         updates = []
         with tf.name_scope('metrics_cals'):
             mean_squared_error, mean_squared_error_update = tf.metrics.mean_squared_error(
-                rgb_labels,
+                gt_images,
                 rgb_output,
             )
             results["mean_squared_error"] = mean_squared_error
             updates.append(mean_squared_error_update)
 
-            psnr_array = tf.image.psnr(rgb_labels, rgb_output, max_val=255)
+            psnr_array = tf.image.psnr(tf.cast(gt_images, tf.uint8), tf.cast(rgb_output, tf.uint8), max_val=255)
             psnr, psnr_update = tf.metrics.mean(psnr_array)
             results["psnr"] = psnr
             updates.append(psnr_update)
 
-            ssim_array = tf.image.ssim(rgb_labels, rgb_output, max_val=255)
+            ssim_array = tf.image.ssim(tf.cast(gt_images, tf.uint8), tf.cast(rgb_output, tf.uint8), max_val=255)
             ssim, ssim_update = tf.metrics.mean(ssim_array)
             results["ssim"] = ssim
             updates.append(ssim_update)
