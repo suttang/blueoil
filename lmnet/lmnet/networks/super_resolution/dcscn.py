@@ -63,6 +63,7 @@ class Dcscn(BaseNetwork):
         kernel_size,
         filters,
         is_training,
+        use_bias=False,
         use_batch_norm=False,
         dropout_rate=1.0,
     ):
@@ -74,6 +75,7 @@ class Dcscn(BaseNetwork):
                 strides=1,
                 padding="SAME",
                 activation=tf.nn.leaky_relu,
+                use_bias=use_bias,
                 kernel_initializer=tf.contrib.layers.variance_scaling_initializer(),
                 kernel_regularizer=tf.contrib.layers.l2_regularizer(self.weight_decay_rate),
             )
@@ -108,7 +110,8 @@ class Dcscn(BaseNetwork):
                 filters=filter_num,
                 use_batch_norm=self.batch_norm,
                 dropout_rate=self.dropout_rate,
-                is_training=is_training
+                is_training=is_training,
+                use_bias=True
             )
             outputs.append(output)
             input = output
@@ -129,7 +132,8 @@ class Dcscn(BaseNetwork):
             kernel_size=1,
             filters=a_filters,
             dropout_rate=self.dropout_rate,
-            is_training=is_training
+            is_training=is_training,
+            use_bias=True
         )
         b1_output = self._convolutional_block(
             "B1",
@@ -137,7 +141,8 @@ class Dcscn(BaseNetwork):
             kernel_size=1,
             filters=b_filters,
             dropout_rate=self.dropout_rate,
-            is_training=is_training
+            is_training=is_training,
+            use_bias=True
         )
         b2_output = self._convolutional_block(
             "B2",
@@ -145,7 +150,8 @@ class Dcscn(BaseNetwork):
             kernel_size=3,
             filters=b_filters,
             dropout_rate=self.dropout_rate,
-            is_training=is_training
+            is_training=is_training,
+            use_bias=True
         )
         recon_output = tf.concat([b2_output, a1_output], 3, name="Concat2")
 
