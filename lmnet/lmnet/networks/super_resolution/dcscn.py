@@ -112,21 +112,6 @@ class Dcscn(BaseNetwork):
 
         return a
 
-    def _pixel_shuffler(
-        self, name, input, kernel_size, scale, filters, is_training
-    ):
-        with tf.variable_scope(name):
-            output = self._convolutional_block(
-                name + "_CNN",
-                input,
-                kernel_size,
-                filters=scale * scale * filters,
-                use_batch_norm=False,
-                is_training=is_training
-            )
-
-            return output
-
     def placeholders(self):
         x = tf.placeholder(tf.float32, shape=[None, None, None, 3], name="x")
         y = tf.placeholder(tf.float32, shape=[None, None, None, 3], name="y")
