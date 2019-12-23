@@ -199,7 +199,6 @@ class Dcscn(BaseNetwork):
 
         return network_output
 
-
     def base(self, x, is_training):
         # tf.summary.image("input", x)
         shape_of_x = tf.shape(x)
