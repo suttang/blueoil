@@ -342,15 +342,15 @@ class ImageFromJson():
             base, _ = os.path.splitext(os.path.basename(image_file))
             file_name = "{}.png".format(base)
 
-            output = output.round().clip(0, 200).astype(np.uint8)
+            output = output.round().clip(0, 255).astype(np.uint8)
             output_image = PIL.Image.fromarray(output)
             filename_images.append((file_name, output_image))
             
         return filename_images
 
-    def __call__(self, json_results, raw_images, image_files):
-        outputs = json.loads(json_results)
-        results = outputs["results"]
+    def __call__(self, outputs, json_results, raw_images, image_files):
+        json_outputs = json.loads(json_results)
+        results = json_outputs["results"]
         assert len(results) == len(raw_images) == len(image_files)
 
         if self.task == Tasks.CLASSIFICATION:

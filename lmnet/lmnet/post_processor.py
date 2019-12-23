@@ -52,8 +52,8 @@ class ConvertYAndCbcrToRgb(Processor):
         """
         results = []
         for i, raw_image in enumerate(raw_images):
-            scaled_image = scale(raw_image, self.scale)
-            scaled_ycncr_image = convert_rgb_to_ycbcr(scaled_image)
+            bicubic_image = scale(raw_image, self.scale)
+            scaled_ycncr_image = convert_rgb_to_ycbcr(bicubic_image)
             result = convert_y_and_cbcr_to_rgb(outputs[i], scaled_ycncr_image[:, :, 1:3])
             results.append(result)
 
