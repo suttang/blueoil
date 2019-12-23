@@ -270,9 +270,6 @@ class Dcscn(BaseNetwork):
 
         gt_images = tf.clip_by_value(gt_images, 0, 255)
         rgb_output = tf.clip_by_value(rgb_output, 0, 255)
-
-        tf.summary.image("metrics/label", tf.cast(gt_images, tf.uint8))
-        tf.summary.image("metrics/output", tf.cast(rgb_output, tf.uint8))
  
         # Calc metrics
         results = {}
