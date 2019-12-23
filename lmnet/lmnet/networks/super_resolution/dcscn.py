@@ -73,7 +73,6 @@ class Dcscn(BaseNetwork):
                 kernel_size=kernel_size,
                 strides=1,
                 padding="SAME",
-                # TODO: prelu
                 activation=tf.nn.leaky_relu,
                 kernel_initializer=tf.contrib.layers.variance_scaling_initializer(),
                 kernel_regularizer=tf.contrib.layers.l2_regularizer(self.weight_decay_rate),
