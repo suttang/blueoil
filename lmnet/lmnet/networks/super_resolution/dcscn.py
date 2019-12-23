@@ -282,12 +282,12 @@ class Dcscn(BaseNetwork):
             results["mean_squared_error"] = mean_squared_error
             updates.append(mean_squared_error_update)
 
-            psnr_array = tf.image.psnr(tf.cast(gt_images, tf.uint8), tf.cast(rgb_output, tf.uint8), max_val=255)
+            psnr_array = tf.image.psnr(gt_images, rgb_output, max_val=1.0)
             psnr, psnr_update = tf.metrics.mean(psnr_array)
             results["psnr"] = psnr
             updates.append(psnr_update)
 
-            ssim_array = tf.image.ssim(tf.cast(gt_images, tf.uint8), tf.cast(rgb_output, tf.uint8), max_val=255)
+            ssim_array = tf.image.ssim(gt_images, rgb_output, max_val=1.0)
             ssim, ssim_update = tf.metrics.mean(ssim_array)
             results["ssim"] = ssim
             updates.append(ssim_update)
