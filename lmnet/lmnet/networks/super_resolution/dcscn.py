@@ -56,34 +56,6 @@ class Dcscn(BaseNetwork):
 
         self.custom_getter = None
 
-    def _conv2d(self, input, w, stride, bias=None, use_batch_norm=False, name=""):
-        output = tf.nn.conv2d(
-            input,
-            w,
-            strides=[1, stride, stride, 1],
-            padding="SAME",
-            name=name + "_conv",
-        )
-
-        if bias is not None:
-            output = tf.add(output, bias, name=name + "_add")
-
-        if use_batch_norm:
-            output = tf.layers.batch_normalization(
-                output, training=self.is_training, name="BN"
-            )
-
-        return output
-
-    def _prelu(self, input, features, name=""):
-        with tf.variable_scope("prelu"):
-            alphas = tf.Variable(
-                tf.constant(0.1, shape=[features]), name=name + "_prelu"
-            )
-
-        output = tf.nn.relu(input) + tf.multiply(alphas, (input - tf.abs(input))) * 0.5
-        return output
-
     def _convolutional_block(
         self,
         name,
@@ -115,7 +87,6 @@ class Dcscn(BaseNetwork):
     def placeholders(self):
         x = tf.placeholder(tf.float32, shape=[None, None, None, 3], name="x")
         y = tf.placeholder(tf.float32, shape=[None, None, None, 3], name="y")
-        self.is_training = tf.placeholder(tf.bool, name="is_training")
 
         return x, y
 
