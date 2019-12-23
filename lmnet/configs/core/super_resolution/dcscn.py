@@ -64,7 +64,7 @@ POST_PROCESSOR = Sequence([
 NETWORK = EasyDict()
 
 NETWORK.OPTIMIZER_CLASS = tf.train.AdamOptimizer
-NETWORK.OPTIMIZER_KWARGS = {'learning_rate': 0.0002, 'beta1': 0.9, 'beta2': 0.999}
+NETWORK.OPTIMIZER_KWARGS = {'learning_rate': 0.00005, 'beta1': 0.9, 'beta2': 0.999}
 NETWORK.LEARNING_RATE_FUNC = None
 NETWORK.LEARNING_RATE_KWARGS = None
 # NETWORK.OPTIMIZER_KWARGS = {'beta1': 0.9, 'beta2': 0.999}
