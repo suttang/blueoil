@@ -110,15 +110,6 @@ class Dcscn(BaseNetwork):
             if dropout_rate < 1.0:
                 a = tf.nn.dropout(a, dropout_rate, name="dropout")
 
-            # Save image
-            # shapes = w.get_shape().as_list()
-            # weights = tf.reshape(w, [shapes[0], shapes[1], shapes[2] * shapes[3]])
-            # weights_transposed = tf.transpose(weights, [2, 0, 1])
-            # weights_transposed = tf.reshape(
-            #     weights_transposed, [shapes[2] * shapes[3], shapes[0], shapes[1], 1]
-            # )
-            # tf.summary.image("weights", weights_transposed, max_outputs=6)
-
         return a
 
     def _pixel_shuffler(
