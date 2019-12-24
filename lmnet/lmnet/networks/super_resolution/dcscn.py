@@ -168,8 +168,7 @@ class Dcscn(BaseNetwork):
             kernel_size=3,
             filters=self.scale*self.scale*(a_filters+b_filters),
             is_training=is_training,
-            use_bias=True,
-            use_activator=True
+            use_bias=True
         )
         upsample_output = tf.depth_to_space(upsample_output, self.scale)
 
