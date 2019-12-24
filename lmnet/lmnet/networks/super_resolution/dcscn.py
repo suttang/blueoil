@@ -65,16 +65,18 @@ class Dcscn(BaseNetwork):
         is_training,
         use_bias=False,
         use_batch_norm=False,
+        use_activator=False,
         dropout_rate=1.0,
     ):
         with tf.variable_scope(name, custom_getter=self.custom_getter):
+            activator = None if use_activator is False else tf.nn.leaky_relu
             a = tf.layers.conv2d(
                 inputs=input,
                 filters=filters,
                 kernel_size=kernel_size,
                 strides=1,
                 padding="SAME",
-                activation=tf.nn.leaky_relu,
+                activation=activator,
                 use_bias=use_bias,
                 kernel_initializer=tf.contrib.layers.variance_scaling_initializer(),
                 kernel_regularizer=tf.contrib.layers.l2_regularizer(self.weight_decay_rate),
@@ -111,7 +113,8 @@ class Dcscn(BaseNetwork):
                 use_batch_norm=self.batch_norm,
                 dropout_rate=self.dropout_rate,
                 is_training=is_training,
-                use_bias=True
+                use_bias=True,
+                use_activator=True
             )
             outputs.append(output)
             input = output
@@ -133,7 +136,8 @@ class Dcscn(BaseNetwork):
             filters=a_filters,
             dropout_rate=self.dropout_rate,
             is_training=is_training,
-            use_bias=True
+            use_bias=True,
+            use_activator=True
         )
         b1_output = self._convolutional_block(
             "B1",
@@ -142,7 +146,8 @@ class Dcscn(BaseNetwork):
             filters=b_filters,
             dropout_rate=self.dropout_rate,
             is_training=is_training,
-            use_bias=True
+            use_bias=True,
+            use_activator=True
         )
         b2_output = self._convolutional_block(
             "B2",
@@ -151,7 +156,8 @@ class Dcscn(BaseNetwork):
             filters=b_filters,
             dropout_rate=self.dropout_rate,
             is_training=is_training,
-            use_bias=True
+            use_bias=True,
+            use_activator=True
         )
         recon_output = tf.concat([b2_output, a1_output], 3, name="Concat2")
 
@@ -161,7 +167,9 @@ class Dcscn(BaseNetwork):
             recon_output,
             kernel_size=3,
             filters=self.scale*self.scale*(a_filters+b_filters),
-            is_training=is_training
+            is_training=is_training,
+            use_bias=True,
+            use_activator=True
         )
         upsample_output = tf.depth_to_space(upsample_output, self.scale)
 
