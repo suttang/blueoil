@@ -24,7 +24,7 @@ from lmnet.data_processor import Sequence
 
 from lmnet.pre_processor import Scale
 from lmnet.post_processor import ConvertYAndCbcrToRgb
-from lmnet.data_augmentor import Crop, RgbToY
+from lmnet.data_augmentor import Crop, RgbToYcbcr
 from lmnet.quantizations import (
     binary_mean_scaling_quantizer,
     linear_mid_tread_half_quantizer
@@ -36,7 +36,7 @@ NETWORK_CLASS = DcscnQuantize
 DATASET_CLASS = Div2kSuperResolution
 
 SCALE = 2
-PATCH_SIZE = 48
+PATCH_SIZE = 96
 
 IMAGE_SIZE = [128, 128]
 BATCH_SIZE = 1
@@ -59,7 +59,7 @@ PRETRAIN_FILE = ""
 
 # PRE_PROCESSOR = None
 PRE_PROCESSOR = Sequence([
-    RgbToY(with_keys=('image', 'mask')),
+    RgbToYcbcr(with_keys=('image', 'mask')),
 ])
 POST_PROCESSOR = Sequence([
     ConvertYAndCbcrToRgb(scale=SCALE)
@@ -68,7 +68,7 @@ POST_PROCESSOR = Sequence([
 NETWORK = EasyDict()
 
 NETWORK.OPTIMIZER_CLASS = tf.train.AdamOptimizer
-NETWORK.OPTIMIZER_KWARGS = {'learning_rate': 0.0002, 'beta1': 0.9, 'beta2': 0.999}
+NETWORK.OPTIMIZER_KWARGS = {'learning_rate': 0.0001, 'beta1': 0.9, 'beta2': 0.999}
 NETWORK.LEARNING_RATE_FUNC = None
 NETWORK.LEARNING_RATE_KWARGS = None
 
