@@ -148,6 +148,17 @@ class Dcscn(BaseNetwork):
             is_training=is_training
         )
 
+        with tf.compat.v1.variable_scope("r_conv"):
+            network_output = tf.layers.conv2d(
+                inputs=upsample_output,
+                filters=self.output_channel,
+                kernel_size=3,
+                padding="SAME",
+                kernel_initializer=tf.contrib.layers.variance_scaling_initializer(),
+                activation=None,
+                use_bias=False
+            )
+
         return network_output
 
     def base(self, x, is_training):
