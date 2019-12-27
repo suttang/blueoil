@@ -20,6 +20,7 @@ import tensorflow as tf
 
 from lmnet.networks.base import BaseNetwork
 from lmnet.layers import conv2d
+from lmnet.blocks import conv_bn_act
 from lmnet.utils.image import convert_ycbcr_to_rgb, convert_y_and_cbcr_to_rgb, convert_rgb_to_ycbcr
 
 
@@ -56,35 +57,6 @@ class Dcscn(BaseNetwork):
 
         self.custom_getter = None
 
-    def _convolutional_block(
-        self,
-        name,
-        input,
-        kernel_size,
-        filters,
-        is_training,
-        use_bias=False,
-        use_batch_norm=False,
-        dropout_rate=1.0,
-    ):
-        with tf.variable_scope(name, custom_getter=self.custom_getter):
-            a = tf.layers.conv2d(
-                inputs=input,
-                filters=filters,
-                kernel_size=kernel_size,
-                strides=1,
-                padding="SAME",
-                activation=tf.nn.leaky_relu,
-                use_bias=use_bias,
-                kernel_initializer=tf.contrib.layers.variance_scaling_initializer(),
-                kernel_regularizer=tf.contrib.layers.l2_regularizer(self.weight_decay_rate),
-            )
-            
-            # if dropout_rate < 1.0:
-            #     a = tf.nn.dropout(a, dropout_rate, name="dropout")
-
-        return a
-
     def placeholders(self):
         x = tf.placeholder(tf.float32, shape=[None, None, None, 3], name="x")
         y = tf.placeholder(tf.float32, shape=[None, None, None, 3], name="y")
@@ -103,15 +75,14 @@ class Dcscn(BaseNetwork):
 
         # Feature extraction layer
         for i, filter_num in enumerate(filters):
-            output = self._convolutional_block(
-                "CNN{}".format(i + 1),
-                input,
-                kernel_size=3,
+            output = conv_bn_act(
+                "conv{}".format(i + 1),
+                inputs=input,
                 filters=filter_num,
-                use_batch_norm=self.batch_norm,
-                dropout_rate=self.dropout_rate,
-                is_training=is_training,
-                use_bias=True
+                kernel_size=3,
+                weight_decay_rate=self.weight_decay_rate,
+                activation=tf.nn.leaky_relu,
+                is_training=is_training
             )
             outputs.append(output)
             input = output
@@ -126,50 +97,54 @@ class Dcscn(BaseNetwork):
         a_filters = 64
         b_filters = 32
 
-        a1_output = self._convolutional_block(
-            "A1",
-            input,
-            kernel_size=1,
+        a1_output = conv_bn_act(
+            "a1",
+            inputs=input,
             filters=a_filters,
-            dropout_rate=self.dropout_rate,
-            is_training=is_training,
-            use_bias=True
-        )
-        b1_output = self._convolutional_block(
-            "B1",
-            input,
             kernel_size=1,
-            filters=b_filters,
-            dropout_rate=self.dropout_rate,
-            is_training=is_training,
-            use_bias=True
+            weight_decay_rate=self.weight_decay_rate,
+            activation=tf.nn.leaky_relu,
+            is_training=is_training
         )
-        b2_output = self._convolutional_block(
-            "B2",
-            b1_output,
-            kernel_size=3,
+        b1_output = conv_bn_act(
+            "b1",
+            inputs=input,
             filters=b_filters,
-            dropout_rate=self.dropout_rate,
-            is_training=is_training,
-            use_bias=True
+            kernel_size=1,
+            weight_decay_rate=self.weight_decay_rate,
+            activation=tf.nn.leaky_relu,
+            is_training=is_training
+        )
+        b2_output = conv_bn_act(
+            "b2",
+            inputs=b1_output,
+            filters=b_filters,
+            kernel_size=3,
+            weight_decay_rate=self.weight_decay_rate,
+            activation=tf.nn.leaky_relu,
+            is_training=is_training
         )
         recon_output = tf.concat([b2_output, a1_output], 3, name="Concat2")
 
         # Upsampling layer
-        upsample_output = self._convolutional_block(
-            "Up-PS",
-            recon_output,
-            kernel_size=3,
+        upsample_output = conv_bn_act(
+            "up-ps",
+            inputs=recon_output,
             filters=self.scale*self.scale*(a_filters+b_filters),
+            kernel_size=3,
+            weight_decay_rate=self.weight_decay_rate,
+            activation=tf.nn.leaky_relu,
             is_training=is_training
         )
         upsample_output = tf.depth_to_space(upsample_output, self.scale)
 
-        network_output = self._convolutional_block(
-            "R-CNN0",
-            upsample_output,
-            kernel_size=3,
+        network_output = conv_bn_act(
+            "r-conv",
+            inputs=upsample_output,
             filters=self.output_channel,
+            kernel_size=3,
+            weight_decay_rate=self.weight_decay_rate,
+            activation=tf.nn.leaky_relu,
             is_training=is_training
         )
 
