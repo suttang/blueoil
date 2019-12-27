@@ -80,8 +80,8 @@ class Dcscn(BaseNetwork):
                 kernel_regularizer=tf.contrib.layers.l2_regularizer(self.weight_decay_rate),
             )
             
-            if dropout_rate < 1.0:
-                a = tf.nn.dropout(a, dropout_rate, name="dropout")
+            # if dropout_rate < 1.0:
+            #     a = tf.nn.dropout(a, dropout_rate, name="dropout")
 
         return a
 
