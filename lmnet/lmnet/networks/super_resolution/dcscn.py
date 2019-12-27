@@ -318,6 +318,10 @@ class DcscnQuantize(Dcscn):
             weight_quantization=weight_quantization
         )
 
+    def base(self, images, is_training):
+        with tf.variable_scope("", custom_getter=self.custom_getter):
+            return super().base(images, is_training)
+
     @staticmethod
     def _quantized_variable_getter(getter, name, weight_quantization=None, *args, **kwargs):
         assert callable(weight_quantization)
