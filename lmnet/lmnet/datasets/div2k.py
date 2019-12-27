@@ -83,13 +83,10 @@ class Div2kSuperResolution(SuperResolutionBase):
     def __getitem__(self, i):
         image, _ = self.dataset[i]
 
-        if self.subset == "train":
-            cropped_image = crop(image, self.patch_size)
-            image = scale(cropped_image, 1 / self.scale)
-            label = cropped_image
-        elif self.subset == "validation":
-            label = image
-            image = scale(image, 1 / self.scale)
+        cropped_image = crop(image, self.patch_size)
+        image = scale(cropped_image, 1 / self.scale)
+        label = cropped_image
+
         return image, label
     
     def __len__(self):
