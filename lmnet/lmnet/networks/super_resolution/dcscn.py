@@ -72,13 +72,13 @@ class Dcscn(BaseNetwork):
     
     def feature_extraction_base(self, input, is_training):
         filters = self.get_filters(self.filters, self.min_filters, self.layers, self.filters_decay_gamma)
-        outputs = []
+        prev_output = input
 
         # Feature extraction layer
         for i, filter_num in enumerate(filters):
             output = conv_bn_act(
                 "conv{}".format(i + 1),
-                inputs=input,
+                inputs=prev_output,
                 filters=filter_num,
                 kernel_size=3,
                 weight_decay_rate=self.weight_decay_rate,
@@ -86,19 +86,17 @@ class Dcscn(BaseNetwork):
                 is_training=is_training
             )
 
-            outputs.append(output)
-            
             with tf.variable_scope("conv{}".format(i + 1)):
                 if i == 0:
                     pass
                 elif i == 1:
-                    concated = tf.concat([outputs], 3)
+                    concated = tf.concat([prev_output, output], 3)
                 else:
                     concated = tf.concat([concated, output], 3)
 
-            input = output
+            prev_output = output
         
-        return network_output
+        return concated
     
     def reconstruction_base(self, input, is_training):
         # Reconstruction layer
