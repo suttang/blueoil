@@ -85,11 +85,18 @@ class Dcscn(BaseNetwork):
                 activation=self.activation,
                 is_training=is_training
             )
+
             outputs.append(output)
+            
+            with tf.variable_scope("conv{}".format(i + 1)):
+                if i == 0:
+                    pass
+                elif i == 1:
+                    concated = tf.concat([outputs], 3)
+                else:
+                    concated = tf.concat([concated, output], 3)
+
             input = output
-        
-        with tf.variable_scope("Concat"):
-            network_output = tf.concat(outputs, 3, name="H_concat")
         
         return network_output
     
