@@ -48,6 +48,7 @@ class Dcscn(BaseNetwork):
         self.min_filters = last_feature_extraction_layer_filters
         self.filters_decay_gamma = filters_decay_gamma
         self.weight_decay_rate = weight_decay_rate
+        self.activation = tf.nn.leaky_relu
 
         # Output nodes should be kept by this probability. If 1, don't use dropout.
         self.dropout_rate = 0.8
@@ -81,7 +82,7 @@ class Dcscn(BaseNetwork):
                 filters=filter_num,
                 kernel_size=3,
                 weight_decay_rate=self.weight_decay_rate,
-                activation=tf.nn.leaky_relu,
+                activation=self.activation,
                 is_training=is_training
             )
             outputs.append(output)
@@ -103,7 +104,7 @@ class Dcscn(BaseNetwork):
             filters=a_filters,
             kernel_size=1,
             weight_decay_rate=self.weight_decay_rate,
-            activation=tf.nn.leaky_relu,
+            activation=self.activation,
             is_training=is_training
         )
         b1_output = conv_bn_act(
@@ -112,7 +113,7 @@ class Dcscn(BaseNetwork):
             filters=b_filters,
             kernel_size=1,
             weight_decay_rate=self.weight_decay_rate,
-            activation=tf.nn.leaky_relu,
+            activation=self.activation,
             is_training=is_training
         )
         b2_output = conv_bn_act(
@@ -121,7 +122,7 @@ class Dcscn(BaseNetwork):
             filters=b_filters,
             kernel_size=3,
             weight_decay_rate=self.weight_decay_rate,
-            activation=tf.nn.leaky_relu,
+            activation=self.activation,
             is_training=is_training
         )
         recon_output = tf.concat([b2_output, a1_output], 3, name="Concat2")
@@ -133,7 +134,7 @@ class Dcscn(BaseNetwork):
             filters=self.scale*self.scale*(a_filters+b_filters),
             kernel_size=3,
             weight_decay_rate=self.weight_decay_rate,
-            activation=tf.nn.leaky_relu,
+            activation=self.activation,
             is_training=is_training
         )
         upsample_output = tf.depth_to_space(upsample_output, self.scale)
@@ -144,7 +145,7 @@ class Dcscn(BaseNetwork):
             filters=self.output_channel,
             kernel_size=3,
             weight_decay_rate=self.weight_decay_rate,
-            activation=tf.nn.leaky_relu,
+            activation=self.activation,
             is_training=is_training
         )
 
