@@ -52,8 +52,8 @@ class Dcscn(BaseNetwork):
         self.custom_getter = None
 
     def placeholders(self):
-        x = tf.placeholder(tf.float32, shape=[self.batch_size, self.image_size[0], self.image_size[1], 3], name="x")
-        y = tf.placeholder(tf.float32, shape=[self.batch_size, self.image_size[0] * self.scale, self.image_size[1] * self.scale, 3], name="y")
+        x = tf.placeholder(tf.float32, shape=[self.batch_size, self.image_size[1], self.image_size[0], 3], name="x")
+        y = tf.placeholder(tf.float32, shape=[self.batch_size, self.image_size[1] * self.scale, self.image_size[0] * self.scale, 3], name="y")
 
         return x, y
     
