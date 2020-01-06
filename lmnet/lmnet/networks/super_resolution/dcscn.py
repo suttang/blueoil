@@ -215,8 +215,8 @@ class Dcscn(BaseNetwork):
         bicubic = tf.image.resize_images(bicubic, (height, width), tf.image.ResizeMethod.BICUBIC)
 
         tf.summary.image("output_image_Y", tf.cast(tf.clip_by_value(output, 0, 255), tf.uint8))
-        tf.summary.image("grand_truth_Y", tf.cast(tf.clip_by_value(tf.slice(labels, [0, 0, 0, 0], [1, -1, -1, 1]), 0, 255), tf.uint8))
-        tf.summary.image("bicubic_Y", tf.cast(tf.clip_by_value(tf.slice(bicubic, [0, 0, 0, 0], [1, -1, -1, 1]), 0, 255), tf.uint8))
+        tf.summary.image("grand_truth_Y", tf.cast(tf.clip_by_value(tf.slice(labels, [0, 0, 0, 0], [-1, -1, -1, 1]), 0, 255), tf.uint8))
+        tf.summary.image("bicubic_Y", tf.cast(tf.clip_by_value(tf.slice(bicubic, [0, 0, 0, 0], [-1, -1, -1, 1]), 0, 255), tf.uint8))
 
         tf.summary.image("output_image", tf.cast(tf.clip_by_value(tf.py_func(self._combine_y_and_cbcr_to_rgb, [output, bicubic], tf.float32), 0, 255), tf.uint8))
         tf.summary.image("grand_truth", tf.cast(tf.clip_by_value(tf.py_func(self._ycbcr_to_rgb, [labels], tf.float32), 0, 255), tf.uint8))
