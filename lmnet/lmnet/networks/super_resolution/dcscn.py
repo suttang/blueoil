@@ -158,7 +158,7 @@ class Dcscn(BaseNetwork):
         return y_hat
 
     def inference(self, x_placeholder, is_training):
-        y_image = tf.slice(x_placeholder, [0, 0, 0, 0], [1, -1, -1, 1])
+        y_image = tf.slice(x_placeholder, [0, 0, 0, 0], [-1, -1, -1, 1])
         y_hat = self.base(y_image, is_training=is_training)
 
         output = tf.identity(y_hat, name="output")
@@ -167,7 +167,7 @@ class Dcscn(BaseNetwork):
 
     def loss(self, output, y_placeholder):
         with tf.name_scope("loss"):
-            y_image = tf.slice(y_placeholder, [0, 0, 0, 0], [1, -1, -1, 1])
+            y_image = tf.slice(y_placeholder, [0, 0, 0, 0], [-1, -1, -1, 1])
             diff = tf.subtract(output, y_image, "diff")
 
             mse = tf.reduce_mean(tf.square(diff, name="diff_square"), name="mse")
