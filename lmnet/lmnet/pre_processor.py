@@ -17,6 +17,7 @@ import numpy as np
 import PIL.Image
 
 from lmnet.data_processor import Processor
+from lmnet.utils.image import scale
 
 
 def resize(image, size=[256, 256]):
@@ -482,29 +483,14 @@ class JointsToGaussianHeatmap(Processor):
 class Scale(Processor):
     """Change image scale.
     """
-    def __init__(self, scale):
+    def __init__(self, scale, method=PIL.Image.BICUBIC, with_keys=None):
         self.scale = scale
+        self.method = method
+        self.with_keys = with_keys
 
-    def __call__(self, image, method=PIL.Image.BICUBIC, **kwargs):
-        height, width = image.shape[0:2]
-
-        new_width = int(width * self.scale)
-        new_height = int(height * self.scale)
-
-        if len(image.shape) == 3 and image.shape[2] == 3:
-            # RGB
-            image = PIL.Image.fromarray(image, "RGB")
-            image = image.resize([new_width, new_height], resample=method)
-            image = np.asarray(image)
-        elif len(image.shape) == 3 and image.shape[2] == 4:
-            # RGBA
-            image = PIL.Image.fromarray(image, "RGB")
-            image = image.resize([new_width, new_height], resample=method)
-            image = np.asarray(image)
+    def __call__(self, **kwargs):
+        if self.with_keys is not None:
+            additionals = {v: scale(kwargs[v], self.scale, method=self.method) for v in self.with_keys if v in kwargs}
         else:
-            image = PIL.Image.fromarray(image.reshape(height, width))
-            image = image.resize([new_width, new_height], resample=method)
-            image = np.asarray(image)
-            image = image.reshape(new_height, new_width, 1)
-        
-        return dict({'image': image, **kwargs})
+            additionals = {}
+        return dict({**kwargs, **additionals})

@@ -82,11 +82,7 @@ class Div2kSuperResolution(SuperResolutionBase):
     
     def __getitem__(self, i):
         image, _ = self.dataset[i]
-
-        cropped_image = crop(image, self.patch_size)
-        image = scale(cropped_image, 1 / self.scale)
-        label = cropped_image
-        return image, label
+        return image, image
     
     def __len__(self):
         return len(self.dataset)

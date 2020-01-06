@@ -59,7 +59,7 @@ def _apply_augmentations(dataset, image, label):
     else:
         sample['label'] = label
 
-    if callable(augmentor) and dataset.subset == "train":
+    if callable(augmentor):
         sample = augmentor(**sample)
 
     if callable(pre_processor):
