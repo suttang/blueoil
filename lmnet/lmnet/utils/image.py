@@ -22,13 +22,13 @@ def load_image(filename, convert_rgb=True):
 def crop(image, patch_size):
     height, width = image.shape[0:2]
 
-    top = random.randint(0, height - patch_size)
-    left = random.randint(0, width - patch_size)
+    top = random.randint(0, height - patch_size[0])
+    left = random.randint(0, width - patch_size[1])
 
     if np.ndim(image) == 2:
-        return image[top:top + patch_size, left:left + patch_size]
+        return image[top:top + patch_size[0], left:left + patch_size[1]]
 
-    return image[top:top + patch_size, left:left + patch_size, :]
+    return image[top:top + patch_size[0], left:left + patch_size[1], :]
 
 
 def scale(image, scale, method=PIL.Image.BICUBIC):
