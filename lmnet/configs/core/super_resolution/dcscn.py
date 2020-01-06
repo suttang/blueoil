@@ -83,14 +83,8 @@ NETWORK.OUTPUT_CHANNEL = 1
 
 # Scale factor for Super Resolution (should be 2 or more)
 NETWORK.SCALE = SCALE
-# Number of feature extraction layers
-NETWORK.FEATURE_EXTRACTION_LAYERS = 12
-# Number of filters of first feature-extraction CNNs
-NETWORK.FIRST_FEATURE_EXTRACTION_LAYER_FILTERS = 196
-# Number of filters of last feature-extraction CNNs
-NETWORK.LAST_FEATURE_EXTRACTION_LAYER_FILTERS = 48
-# Number of CNN filters are decayed from [first] to [last] by this gamma
-NETWORK.FILTERS_DECAY_GAMMA = 1.5
+# List of feature extraction layers
+NETWORK.FEATURE_EXTRACTION_LAYERS = [192, 192, 160, 128, 128, 96, 96, 96, 64, 64, 64, 64]
 
 DATASET = EasyDict()
 DATASET.SCALE = SCALE
