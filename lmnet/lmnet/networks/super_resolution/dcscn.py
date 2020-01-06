@@ -31,10 +31,7 @@ class Dcscn(BaseNetwork):
         scale=2,
         input_channel=1,
         output_channel=1,
-        feature_extraction_layers=12,
-        first_feature_extraction_layer_filters=196,
-        last_feature_extraction_layer_filters=48,
-        filters_decay_gamma=1.5,
+        feature_extraction_layers=None,
         weight_decay_rate=None,
         *args,
         **kwargs
@@ -42,10 +39,7 @@ class Dcscn(BaseNetwork):
         super().__init__(*args, **kwargs)
         self.output_channel = output_channel
         self.scale = scale
-        self.layers = feature_extraction_layers
-        self.filters = first_feature_extraction_layer_filters
-        self.min_filters = last_feature_extraction_layer_filters
-        self.filters_decay_gamma = filters_decay_gamma
+        self.filters = [] if feature_extraction_layers is None else feature_extraction_layers
         self.weight_decay_rate = weight_decay_rate
 
         # Output nodes should be kept by this probability. If 1, don't use dropout.
@@ -90,19 +84,12 @@ class Dcscn(BaseNetwork):
         y = tf.placeholder(tf.float32, shape=[None, None, None, 3], name="y")
 
         return x, y
-
-    def get_filters(self, first, last, layers, decay):
-        return [
-            int((first - last) * (1 - pow(i / float(layers - 1), 1.0 / decay)) + last)
-            for i in range(layers)
-        ]
     
     def feature_extraction_base(self, input, is_training):
-        filters = self.get_filters(self.filters, self.min_filters, self.layers, self.filters_decay_gamma)
         outputs = []
 
         # Feature extraction layer
-        for i, filter_num in enumerate(filters):
+        for i, filter_num in enumerate(self.filters):
             output = self._convolutional_block(
                 "CNN{}".format(i + 1),
                 input,
