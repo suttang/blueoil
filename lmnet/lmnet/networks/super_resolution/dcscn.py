@@ -86,8 +86,8 @@ class Dcscn(BaseNetwork):
         return a
 
     def placeholders(self):
-        x = tf.placeholder(tf.float32, shape=[None, None, None, 3], name="x")
-        y = tf.placeholder(tf.float32, shape=[None, None, None, 3], name="y")
+        x = tf.placeholder(tf.float32, shape=[self.batch_size, None, None, 3], name="x")
+        y = tf.placeholder(tf.float32, shape=[self.batch_size, None, None, 3], name="y")
 
         return x, y
 
