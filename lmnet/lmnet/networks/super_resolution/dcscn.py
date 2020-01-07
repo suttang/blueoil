@@ -320,9 +320,10 @@ class DcscnQuantize(Dcscn):
         shape = encoded.get_shape()
         return tf.reshape(encoded, (shape[0], shape[1], shape[2], -1))
 
-    def feature_extraction_base(self, input, is_training):
-        input = self.encode_image(input)
-        return super().feature_extraction_base(input, is_training)
+    def feature_extraction_base(self, images, is_training):
+        images = self.encode_image(images)
+        images = self.activation(images)
+        return super().feature_extraction_base(images, is_training)
 
     @staticmethod
     def _quantized_variable_getter(getter, name, weight_quantization=None, *args, **kwargs):
