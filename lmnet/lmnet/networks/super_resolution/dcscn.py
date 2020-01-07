@@ -293,6 +293,7 @@ class DcscnQuantize(Dcscn):
             **kwargs
         )
 
+        # Quantizers
         assert weight_quantizer
         assert activation_quantizer
 
@@ -306,15 +307,47 @@ class DcscnQuantize(Dcscn):
             weight_quantization=weight_quantization
         )
 
+        # Embedding
+        embedding_granularity = 256
+        embedding_dim = 10
+        embedding_initial_value = np.random.rand(embedding_granularity, embedding_dim).astype(np.float32)
+        self.embedding = tf.Variable(embedding_initial_value)
+
     def base(self, images, is_training):
         with tf.variable_scope("", custom_getter=self.custom_getter):
             return super().base(images, is_training)
+
+    def encode_image(self, images):
+        # images = tf.cast(images * 255, tf.int32)
+        # images = tf.clip_by_value(images, 0, 255)
+        encoded = tf.contrib.layers.embedding_lookup_unique(self.embedding, images)
+        shape = encoded.get_shape()
+        return tf.reshape(encoded, (shape[0], shape[1], shape[2], -1))
+
+    def feature_extraction_base(self, input, is_training):
+        input = self.encode_image(input)
+        return super().feature_extraction_base(input, is_training)
 
     @staticmethod
     def _quantized_variable_getter(getter, name, weight_quantization=None, *args, **kwargs):
         assert callable(weight_quantization)
         var = getter(name, *args, **kwargs)
         with tf.compat.v1.variable_scope(name):
+            print(var.op.name)
             if "kernel" == var.op.name.split("/")[-1]:
                 return weight_quantization(var)
         return var
+
+        # assert callable(weight_quantization)
+        # var = getter(name, *args, **kwargs)
+        # with tf.variable_scope(name):
+        #     # Apply weight quantize to variable whose last word of name is "kernel".
+        #     if "kernel" == var.op.name.split("/")[-1]:
+
+        #         if "float" in var.op.name:
+        #             print("not quantized", var.op.name)
+        #             return var
+
+        #         print("quantized", var.op.name)
+        #         return weight_quantization(var)
+        # return var
