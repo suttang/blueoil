@@ -77,9 +77,6 @@ NETWORK.BATCH_SIZE = BATCH_SIZE
 NETWORK.DATA_FORMAT = DATA_FORMAT
 NETWORK.WEIGHT_DECAY_RATE = 0.0001
 
-NETWORK.INPUT_CHANNEL = 1
-NETWORK.OUTPUT_CHANNEL = 1
-
 # Scale factor for Super Resolution (should be 2 or more)
 NETWORK.SCALE = SCALE
 # List of feature extraction layers

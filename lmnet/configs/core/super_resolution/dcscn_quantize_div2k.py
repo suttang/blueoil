@@ -89,9 +89,6 @@ NETWORK.ACTIVATION_QUANTIZER_KWARGS = {
 NETWORK.WEIGHT_QUANTIZER = binary_mean_scaling_quantizer
 NETWORK.WEIGHT_QUANTIZER_KWARGS = {}
 
-NETWORK.INPUT_CHANNEL = 1
-NETWORK.OUTPUT_CHANNEL = 1
-
 # Scale factor for Super Resolution (should be 2 or more)
 NETWORK.SCALE = SCALE
 # List of feature extraction layers

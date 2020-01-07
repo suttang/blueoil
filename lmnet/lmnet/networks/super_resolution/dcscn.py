@@ -30,25 +30,16 @@ class Dcscn(BaseNetwork):
     def __init__(
         self,
         scale=2,
-        input_channel=1,
-        output_channel=1,
         feature_extraction_layers=None,
         weight_decay_rate=None,
         *args,
         **kwargs
     ):
         super().__init__(*args, **kwargs)
-        self.output_channel = output_channel
         self.scale = scale
         self.filters = [] if feature_extraction_layers is None else feature_extraction_layers
         self.weight_decay_rate = weight_decay_rate
         self.activation = tf.nn.leaky_relu
-
-        # Output nodes should be kept by this probability. If 1, don't use dropout.
-        self.dropout_rate = 0.8
-
-        # Use batch normalization after each CNNs
-        self.batch_norm = False
 
         self.custom_getter = None
 
@@ -58,10 +49,18 @@ class Dcscn(BaseNetwork):
 
         batch_size = self.batch_size if self.image_size[0] is not None else None
 
-        x = tf.placeholder(tf.float32, shape=[batch_size, self.image_size[0], self.image_size[1], 3], name="x")
-        y = tf.placeholder(tf.float32, shape=[batch_size, label_height, label_width, 3], name="y")
+        images_placeholder = tf.placeholder(
+            tf.float32,
+            shape=[batch_size, self.image_size[0], self.image_size[1], 3],
+            name="images_placeholder"
+        )
+        labels_placeholder = tf.placeholder(
+            tf.float32,
+            shape=[batch_size, label_height, label_width, 3],
+            name="labels_placeholder"
+        )
 
-        return x, y
+        return images_placeholder, labels_placeholder
     
     def feature_extraction_base(self, input, is_training):
         prev_output = input
@@ -139,7 +138,7 @@ class Dcscn(BaseNetwork):
         with tf.compat.v1.variable_scope("r_conv"):
             network_output = tf.layers.conv2d(
                 inputs=upsample_output,
-                filters=self.output_channel,
+                filters=1,
                 kernel_size=3,
                 padding="SAME",
                 kernel_initializer=tf.contrib.layers.variance_scaling_initializer(),
@@ -149,37 +148,36 @@ class Dcscn(BaseNetwork):
 
         return network_output
 
-    def base(self, x, is_training):
-        # tf.summary.image("input", x)
-        shape_of_x = tf.shape(x)
-        height = shape_of_x[1]
-        width = shape_of_x[2]
+    def base(self, images, is_training):
+        shape_of_images = tf.shape(images)
+        height = shape_of_images[1]
+        width = shape_of_images[2]
 
-        x2 = tf.image.resize_images(
-            x,
+        resized_images = tf.image.resize_images(
+            images,
             (height * 2, width * 2),
             method=tf.image.ResizeMethod.BICUBIC
         )
 
-        feature_extraction_output = self.feature_extraction_base(x, is_training)
+        feature_extraction_output = self.feature_extraction_base(images, is_training)
         reconstruction_output = self.reconstruction_base(feature_extraction_output, is_training)
 
-        y_hat = tf.add(reconstruction_output, x2, name="output")
-
-        return y_hat
-
-    def inference(self, x_placeholder, is_training):
-        y_image = x_placeholder[:, :, :, 0:1]
-        y_hat = self.base(y_image, is_training=is_training)
-
-        output = tf.identity(y_hat, name="output")
+        output = tf.add(reconstruction_output, resized_images, name="output")
 
         return output
 
-    def loss(self, output, y_placeholder):
+    def inference(self, images, is_training):
+        y_images = images[:, :, :, 0:1]
+        output = self.base(y_images, is_training=is_training)
+
+        output = tf.identity(output, name="output")
+
+        return output
+
+    def loss(self, output, labels):
         with tf.name_scope("loss"):
-            y_image = y_placeholder[:, :, :, 0:1]
-            diff = tf.subtract(output, y_image, "diff")
+            y_images = labels[:, :, :, 0:1]
+            diff = tf.subtract(output, y_images, "diff")
 
             mse = tf.reduce_mean(tf.square(diff, name="diff_square"), name="mse")
             loss = tf.identity(mse, name="image_loss")
@@ -196,7 +194,6 @@ class Dcscn(BaseNetwork):
         rgb_images = []
         for image in images:
             image = convert_ycbcr_to_rgb(image)
-            # image.round().clip(0, 255)
             rgb_images.append(image)
         return np.array(np.round(rgb_images), dtype=np.float32)
         
@@ -319,8 +316,6 @@ class DcscnQuantize(Dcscn):
 
     def encode_image(self, images):
         images = tf.cast(images, tf.int32)
-        # images = tf.cast(images * 255, tf.int32)
-        # images = tf.clip_by_value(images, 0, 255)
         encoded = tf.contrib.layers.embedding_lookup_unique(self.embedding, images)
         shape = encoded.get_shape()
         return tf.reshape(encoded, (shape[0], shape[1], shape[2], -1))
