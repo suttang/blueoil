@@ -24,7 +24,7 @@ import numpy as np
 from core.data_types import QUANTIZED_NOT_PACKED, QUANTIZED_PACKED, QUANTIZED_PACKED_KERNEL, Int32, PackedUint32, Uint32
 from core.graph import Graph
 from core.graph_pattern_matching import get_nodes_in_branch, sort_graph
-from core.operators import Constant, Conv, Lookup, Operator, BatchNormalizationOptimized
+from core.operators import Constant, Conv, Lookup, LookupV2, Operator, BatchNormalizationOptimized
 from modules.packer import Packer
 
 
@@ -174,7 +174,7 @@ def pass_propagate_quantization_details_into_conv(graph: Graph) -> None:
         'QTZ_binary_mean_scaling',
         'QTZ_linear_mid_tread_half',
         'QTZ_binary_channel_wise_mean_scaling',
-        'Lookup'
+        'Lookup', 'LookupV2'
     ]
 
     quant_details = defaultdict(list)
@@ -563,6 +563,106 @@ def pass_propagate_output_type_backward(graph: Graph) -> None:
     output_node = exec_list[-1]
     output_type = output_node.dtype
     output_dtype_changer(output_node, output_type)
+
+
+def pass_lookup_v2(graph: Graph) -> None:
+    """Lookup V2.
+
+        Parameters
+        ----------
+        graph : Graph
+            The input graph. It will be modified in-place.
+    """
+    exec_list = [n for n in sort_graph(graph) if n.op_type == 'ConcatOnDepth']
+    placeholder = [n for n in sort_graph(graph) if n.op_type in 'Input']
+
+    word_size = 32
+    num_lookup_table = placeholder[0].channel
+
+    for m in exec_list:
+        if len(m.input_nodes) != num_lookup_table:
+            continue
+
+        to_be_removed = []
+        embedded_lsb = []
+        embedded_msb = []
+
+        for i in m.input_nodes:
+            quantizer = i
+            if quantizer.op_type != "QTZ_linear_mid_tread_half":
+                continue
+            p1 = quantizer.input_ops['X']
+            if p1.op_type != 'BatchNormalization':
+                continue
+            p2 = p1.input_ops['X']
+            if p2.op_type != 'Conv':
+                continue
+            p3 = p2.input_ops['X']
+            if p3.op_type != 'Split':
+                continue
+            if p3 not in placeholder[0].output_op_list and p3.num_splits != placeholder[0].channel:
+                continue
+
+            def forward_calc(pixel_value):
+                conv_data = {'data': p2.input_ops['W'].data.flatten() * (pixel_value / 255.0)}
+                bn_data = p1.run(**conv_data)
+                q_data = quantizer.run(**bn_data)
+                return [q_data['data']]
+
+            embedded_table = np.concatenate([forward_calc(pv) for pv in range(256)])
+
+            lsb = np.zeros((256,), np.uint32)
+            msb = np.zeros((256,), np.uint32)
+
+            lu_bitwidth = quantizer.nbit
+            packer = Packer(lu_bitwidth, word_size)
+
+            idx = 0
+            for p in embedded_table:
+                data = packer.run(p.astype(np.float32), p.shape).flatten()
+                lsb[idx] = data[0]
+                msb[idx] = data[1]
+                idx += 1
+
+            embedded_lsb.append(Constant(p2.name + '_pe_lsb_new', QUANTIZED_PACKED_KERNEL(), lsb,
+                                         dimension_format='TC', packed=True, actual_shape=[256, word_size]))
+            embedded_msb.append(Constant(p2.name + '_pe_msb_new', QUANTIZED_PACKED_KERNEL(), msb,
+                                         dimension_format='TC', packed=True, actual_shape=[256, word_size]))
+
+        if len(embedded_msb) == num_lookup_table and len(embedded_lsb) == num_lookup_table:
+            n, h, w, c = m.shape
+            shape = [h, w, 1, 2, word_size]
+
+            pe = LookupV2('LookupV2', shape, QUANTIZED_PACKED(),
+                          {'input': placeholder[0],
+                           'r_lsb': embedded_lsb[0],
+                           'r_msb': embedded_msb[0],
+                           'g_lsb': embedded_lsb[1],
+                           'g_msb': embedded_msb[1],
+                           'b_lsb': embedded_lsb[2],
+                           'b_msb': embedded_msb[2]},
+                          dimension_format='HWChBCl')
+
+            get_nodes_in_branch(m, placeholder[0], to_be_removed)
+            placeholder[0].remove_output('output')
+            placeholder[0].add_output('output', pe)
+            pe.add_outputs(m.output_ops)
+
+            output_op = m.output_op_list[0]
+            for idx, in_op in output_op.input_ops.items():
+                if in_op == m:
+                    output_op.add_input(idx, pe)
+                    break
+
+            for pe_lsb, pe_msb in zip(embedded_lsb, embedded_msb):
+                graph.add_op(pe_lsb)
+                graph.add_op(pe_msb)
+            graph.add_op(pe)
+
+            for op in to_be_removed:
+                graph.remove_op(op)
+        else:
+            continue
 
 
 def pass_lookup(graph: Graph) -> None:

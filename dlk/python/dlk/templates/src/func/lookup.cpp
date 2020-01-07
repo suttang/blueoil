@@ -118,3 +118,49 @@ void func_Lookup(const TensorView<float, MemoryLayout::NHWC>& input,
   Measurement::Stop();
 }
 
+void func_LookupV2(const TensorView<float, MemoryLayout::NHWC>& input,
+    const TensorView<QUANTIZED_PACKED_KERNEL, MemoryLayout::TC>& rlsb,
+    const TensorView<QUANTIZED_PACKED_KERNEL, MemoryLayout::TC>& rmsb,
+    const TensorView<QUANTIZED_PACKED_KERNEL, MemoryLayout::TC>& glsb,
+    const TensorView<QUANTIZED_PACKED_KERNEL, MemoryLayout::TC>& gmsb,
+    const TensorView<QUANTIZED_PACKED_KERNEL, MemoryLayout::TC>& blsb,
+    const TensorView<QUANTIZED_PACKED_KERNEL, MemoryLayout::TC>& bmsb,
+    const TensorView<QUANTIZED_PACKED, MemoryLayout::HWChBCl>& output) {
+  const auto in_shape = input.get_shape();
+  const auto h = in_shape[1];
+  const auto w = in_shape[2];
+  const auto c = in_shape[3];
+
+  int b = 32;
+  int packed_depth = 2;
+  Measurement::Start("Lookup");
+
+  const float * in_ptr = input.data();
+  const QUANTIZED_PACKED_KERNEL * r_lsb_ptr = rlsb.data();
+  const QUANTIZED_PACKED_KERNEL * r_msb_ptr = rmsb.data();
+  const QUANTIZED_PACKED_KERNEL * g_lsb_ptr = glsb.data();
+  const QUANTIZED_PACKED_KERNEL * g_msb_ptr = gmsb.data();
+  const QUANTIZED_PACKED_KERNEL * b_lsb_ptr = blsb.data();
+  const QUANTIZED_PACKED_KERNEL * b_msb_ptr = bmsb.data();
+  QUANTIZED_PACKED * out_ptr = output.data();
+
+  int len = h * w;
+#pragma omp parallel for
+  for(int i = 0; i < len; i++) {
+    int r = int(in_ptr[i * 3 + 0] * 255.0f);
+    int g = int(in_ptr[i * 3 + 1] * 255.0f);
+    int b = int(in_ptr[i * 3 + 2] * 255.0f);
+
+    auto r_lsb = r_lsb_ptr[r];
+    auto g_lsb = g_lsb_ptr[g];
+    auto b_lsb = b_lsb_ptr[b];
+    auto r_msb = r_msb_ptr[r];
+    auto g_msb = g_msb_ptr[g];
+    auto b_msb = b_msb_ptr[b];
+
+    out_ptr[i * 2 + 0] = QUANTIZED_PACKED((b_lsb.Raw() << 20) | (g_lsb.Raw() << 10) | r_lsb.Raw());
+    out_ptr[i * 2 + 1] = QUANTIZED_PACKED((b_msb.Raw() << 20) | (g_msb.Raw() << 10) | r_msb.Raw());
+
+  }
+  Measurement::Stop();
+}

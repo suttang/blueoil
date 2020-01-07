@@ -1323,7 +1323,7 @@ class BatchNormalization(Operator):
         beta = np.float64(self._input_ops['B'].data)
         mean = np.float64(self._input_ops['mean'].data)
         var = np.float64(self._input_ops['var'].data)
-
+        
         x_norm = (kwargs['data'] - mean) / np.sqrt(var + self.epsilon)
         kwargs['data'] = scale * x_norm + beta
         return kwargs
@@ -3021,6 +3021,40 @@ class Lookup(Quantizer):
     """
 
     _input_names = ['input', 'lsb', 'msb']
+    _output_names = ['output']
+
+    def _check_consistency(self) -> None:
+        super()._check_consistency()
+
+    @property
+    def is_monotonic(self) -> bool:
+        return True
+
+    @property
+    def nbit(self) -> int:
+        return 2
+
+    @property
+    def max_v(self) -> float:
+        return 2.0
+
+
+class LookupV2(Quantizer):
+    r"""Lookup operator.
+
+    Inputs
+    ------
+    input
+        The input tensor.
+
+    Outputs
+    -------
+    output
+        The output.
+
+    """
+
+    _input_names = ['input', 'r_lsb', 'r_msb', 'g_lsb', 'g_msb', 'b_lsb', 'b_msb']
     _output_names = ['output']
 
     def _check_consistency(self) -> None:
