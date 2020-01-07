@@ -327,6 +327,7 @@ class DcscnQuantize(Dcscn):
 
     def feature_extraction_base(self, input, is_training):
         input = self.encode_image(input)
+        input = self.activation(input)
         return super().feature_extraction_base(input, is_training)
 
     @staticmethod
