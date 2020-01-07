@@ -70,7 +70,7 @@ NETWORK.OPTIMIZER_KWARGS = {'beta1': 0.9, 'beta2': 0.999}
 NETWORK.LEARNING_RATE_FUNC = tf.train.cosine_decay
 NETWORK.LEARNING_RATE_KWARGS = {
     "learning_rate": 0.0003,
-    "decay_steps": 80 * 800,
+    "decay_steps": MAX_EPOCHS * 800 / BATCH_SIZE,
 }
 NETWORK.IMAGE_SIZE = IMAGE_SIZE
 NETWORK.BATCH_SIZE = BATCH_SIZE
