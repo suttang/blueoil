@@ -318,6 +318,7 @@ class DcscnQuantize(Dcscn):
             return super().base(images, is_training)
 
     def encode_image(self, images):
+        images = tf.cast(images, tf.int32)
         # images = tf.cast(images * 255, tf.int32)
         # images = tf.clip_by_value(images, 0, 255)
         encoded = tf.contrib.layers.embedding_lookup_unique(self.embedding, images)
@@ -333,21 +334,6 @@ class DcscnQuantize(Dcscn):
         assert callable(weight_quantization)
         var = getter(name, *args, **kwargs)
         with tf.compat.v1.variable_scope(name):
-            print(var.op.name)
             if "kernel" == var.op.name.split("/")[-1]:
                 return weight_quantization(var)
         return var
-
-        # assert callable(weight_quantization)
-        # var = getter(name, *args, **kwargs)
-        # with tf.variable_scope(name):
-        #     # Apply weight quantize to variable whose last word of name is "kernel".
-        #     if "kernel" == var.op.name.split("/")[-1]:
-
-        #         if "float" in var.op.name:
-        #             print("not quantized", var.op.name)
-        #             return var
-
-        #         print("quantized", var.op.name)
-        #         return weight_quantization(var)
-        # return var

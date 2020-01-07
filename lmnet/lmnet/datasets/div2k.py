@@ -59,16 +59,20 @@ class Div2kSuperResolution(SuperResolutionBase):
     extend_dir = Div2k.extend_dir
     available_subsets = Div2k.available_subsets
 
-    def __init__(self, data_processor=None, **kwargs):
+    def __init__(self, data_processor=None, val_batch_size=1, **kwargs):
         self.dataset = Div2k(**kwargs)
 
         self.subset = self.dataset.subset
-        self.batch_size = self.dataset.batch_size if self.dataset.subset == "train" else 1
         self.augmentor = self.dataset.augmentor
         self.data_processor = data_processor
         self.pre_processor = self.dataset.pre_processor
         self.data_format = self.dataset.data_format
         self.seed = self.dataset.seed
+
+        if self.subset == "validation":
+            self.batch_size = val_batch_size
+        else:
+            self.batch_size = self.dataset.batch_size
 
     @property
     def files(self):
