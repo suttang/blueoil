@@ -63,7 +63,7 @@ class Div2kSuperResolution(SuperResolutionBase):
         self.dataset = Div2k(**kwargs)
 
         self.subset = self.dataset.subset
-        self.batch_size = self.dataset.batch_size
+        self.batch_size = self.dataset.batch_size if self.dataset.subset == "train" else 1
         self.augmentor = self.dataset.augmentor
         self.data_processor = data_processor
         self.pre_processor = self.dataset.pre_processor
