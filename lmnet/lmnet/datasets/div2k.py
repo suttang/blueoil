@@ -59,15 +59,13 @@ class Div2kSuperResolution(SuperResolutionBase):
     extend_dir = Div2k.extend_dir
     available_subsets = Div2k.available_subsets
 
-    def __init__(self, scale, patch_size, **kwargs):
+    def __init__(self, data_processor=None, **kwargs):
         self.dataset = Div2k(**kwargs)
-
-        self.scale = scale
-        self.patch_size = patch_size
 
         self.subset = self.dataset.subset
         self.batch_size = self.dataset.batch_size
         self.augmentor = self.dataset.augmentor
+        self.data_processor = data_processor
         self.pre_processor = self.dataset.pre_processor
         self.data_format = self.dataset.data_format
         self.seed = self.dataset.seed
@@ -82,15 +80,7 @@ class Div2kSuperResolution(SuperResolutionBase):
     
     def __getitem__(self, i):
         image, _ = self.dataset[i]
-
-        if self.subset == "train":
-            cropped_image = crop(image, self.patch_size)
-            image = scale(cropped_image, 1 / self.scale)
-            label = cropped_image
-        elif self.subset == "validation":
-            label = image
-            image = scale(image, 1 / self.scale)
-        return image, label
+        return image, image
     
     def __len__(self):
         return len(self.dataset)

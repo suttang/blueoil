@@ -62,6 +62,9 @@ def _apply_augmentations(dataset, image, label):
     if callable(augmentor) and dataset.subset == "train":
         sample = augmentor(**sample)
 
+    if hasattr(dataset, "data_processor") and callable(dataset.data_processor):
+        sample = dataset.data_processor(**sample)
+
     if callable(pre_processor):
         sample = pre_processor(**sample)
 
