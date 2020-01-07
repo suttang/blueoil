@@ -24,7 +24,7 @@ from lmnet.data_processor import Sequence
 
 from lmnet.pre_processor import Scale
 from lmnet.post_processor import ConvertYAndCbcrToRgb
-from lmnet.data_augmentor import Crop, RgbToY
+from lmnet.data_augmentor import Crop, RgbToYcbcr
 from lmnet.quantizations import (
     binary_mean_scaling_quantizer,
     linear_mid_tread_half_quantizer
@@ -36,15 +36,14 @@ NETWORK_CLASS = DcscnQuantize
 DATASET_CLASS = Div2kSuperResolution
 
 SCALE = 2
-PATCH_SIZE = 48
 
-IMAGE_SIZE = [128, 128]
-BATCH_SIZE = 1
+IMAGE_SIZE = [None, None]
+BATCH_SIZE = 2
 DATA_FORMAT = "NHWC"
 TASK = Tasks.SUPER_RESOLUTION
 CLASSES = []
 
-MAX_EPOCHS = 50
+MAX_EPOCHS = 80 * BATCH_SIZE
 SAVE_CHECKPOINT_STEPS = 1000
 KEEP_CHECKPOINT_MAX = 5
 TEST_STEPS = 1000
@@ -59,7 +58,7 @@ PRETRAIN_FILE = ""
 
 # PRE_PROCESSOR = None
 PRE_PROCESSOR = Sequence([
-    RgbToY(with_keys=('image', 'mask')),
+    RgbToYcbcr(with_keys=('image', 'mask')),
 ])
 POST_PROCESSOR = Sequence([
     ConvertYAndCbcrToRgb(scale=SCALE)
@@ -68,22 +67,19 @@ POST_PROCESSOR = Sequence([
 NETWORK = EasyDict()
 
 NETWORK.OPTIMIZER_CLASS = tf.train.AdamOptimizer
-NETWORK.OPTIMIZER_KWARGS = {'learning_rate': 0.0002, 'beta1': 0.9, 'beta2': 0.999}
-NETWORK.LEARNING_RATE_FUNC = None
-NETWORK.LEARNING_RATE_KWARGS = None
-
+# NETWORK.OPTIMIZER_KWARGS = {'learning_rate': 0.00005, 'beta1': 0.9, 'beta2': 0.999}
+# NETWORK.LEARNING_RATE_FUNC = None
+# NETWORK.LEARNING_RATE_KWARGS = None
+NETWORK.OPTIMIZER_KWARGS = {'beta1': 0.9, 'beta2': 0.999}
+NETWORK.LEARNING_RATE_FUNC = tf.train.cosine_decay
+NETWORK.LEARNING_RATE_KWARGS = {
+    "learning_rate": 0.0003,
+    "decay_steps": MAX_EPOCHS * 800 / BATCH_SIZE,
+}
 NETWORK.IMAGE_SIZE = IMAGE_SIZE
 NETWORK.BATCH_SIZE = BATCH_SIZE
 NETWORK.DATA_FORMAT = DATA_FORMAT
-NETWORK.WEIGHT_DECAY_RATE = 0.00003
-
-NETWORK.ACTIVATION_QUANTIZER = linear_mid_tread_half_quantizer
-NETWORK.ACTIVATION_QUANTIZER_KWARGS = {
-    'bit': 1,
-    'max_value': 1
-}
-NETWORK.WEIGHT_QUANTIZER = binary_mean_scaling_quantizer
-NETWORK.WEIGHT_QUANTIZER_KWARGS = {}
+NETWORK.WEIGHT_DECAY_RATE = 0.0001
 
 NETWORK.INPUT_CHANNEL = 1
 NETWORK.OUTPUT_CHANNEL = 1
@@ -95,8 +91,13 @@ NETWORK.FEATURE_EXTRACTION_LAYERS = [192, 192, 160, 128, 128, 96, 96, 96, 64, 64
 
 DATASET = EasyDict()
 DATASET.SCALE = SCALE
-DATASET.PATCH_SIZE = PATCH_SIZE
 DATASET.BATCH_SIZE = BATCH_SIZE
+DATASET.ENABLE_PREFETCH = True
 DATASET.DATA_FORMAT = DATA_FORMAT
+DATASET.DATA_PROCESSOR = Sequence([
+    Scale(1 / SCALE, with_keys=("image",))
+])
 DATASET.PRE_PROCESSOR = PRE_PROCESSOR
-DATASET.AUGMENTOR = None
+DATASET.AUGMENTOR = Sequence([
+    Crop((48 * SCALE, 48 * SCALE))
+])
