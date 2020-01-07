@@ -52,8 +52,11 @@ class Dcscn(BaseNetwork):
         self.custom_getter = None
 
     def placeholders(self):
+        label_height = self.image_size[0] * self.scale if self.image_size[0] is not None else None
+        label_width = self.image_size[1] * self.scale if self.image_size[1] is not None else None
+
         x = tf.placeholder(tf.float32, shape=[self.batch_size, self.image_size[0], self.image_size[1], 3], name="x")
-        y = tf.placeholder(tf.float32, shape=[self.batch_size, self.image_size[0] * self.scale, self.image_size[1] * self.scale, 3], name="y")
+        y = tf.placeholder(tf.float32, shape=[self.batch_size, label_height, label_width, 3], name="y")
 
         return x, y
     
