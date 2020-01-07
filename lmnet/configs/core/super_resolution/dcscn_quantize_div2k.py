@@ -83,8 +83,8 @@ NETWORK.WEIGHT_DECAY_RATE = 0.0001
 
 NETWORK.ACTIVATION_QUANTIZER = linear_mid_tread_half_quantizer
 NETWORK.ACTIVATION_QUANTIZER_KWARGS = {
-    'bit': 1,
-    'max_value': 1
+    'bit': 2,
+    'max_value': 2
 }
 NETWORK.WEIGHT_QUANTIZER = binary_mean_scaling_quantizer
 NETWORK.WEIGHT_QUANTIZER_KWARGS = {}
